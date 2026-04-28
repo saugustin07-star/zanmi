@@ -223,31 +223,45 @@ export default function LandingPage() {
             </p>
           </div>
 
-          {/* Two demo entry cards */}
-          <div className="grid md:grid-cols-2 gap-6 mb-14">
-            <div className="bg-zpurple/5 border-2 border-zpurple/20 rounded-3xl p-8 flex flex-col">
+          {/* Three demo entry cards */}
+          <div className="grid md:grid-cols-3 gap-6 mb-14">
+            <div className="bg-zpurple/5 border-2 border-zpurple/20 rounded-3xl p-7 flex flex-col">
               <div className="w-12 h-12 bg-zpurple/10 rounded-2xl flex items-center justify-center text-2xl mb-4">🎮</div>
-              <h3 className="font-black text-xl text-zdark mb-2">Student Demo</h3>
-              <p className="text-zdark/60 font-semibold leading-relaxed mb-6 flex-1">
-                See how a young person would experience a gamified survey.
+              <h3 className="font-black text-lg text-zdark mb-2">Student Demo</h3>
+              <p className="text-zdark/60 font-semibold text-sm leading-relaxed mb-6 flex-1">
+                A gamified survey experience designed for young people.
               </p>
               <Link
                 href="/survey/demo-kids"
-                className="inline-flex items-center justify-center px-6 py-3 bg-zpurple text-white font-bold rounded-2xl hover:bg-zpurple-dark transition-all shadow-game-sm btn-game"
+                className="inline-flex items-center justify-center px-5 py-3 bg-zpurple text-white font-bold rounded-2xl hover:bg-zpurple-dark transition-all shadow-game-sm btn-game text-sm"
               >
                 Try Student Demo →
               </Link>
             </div>
 
-            <div className="bg-zteal/5 border-2 border-zteal/20 rounded-3xl p-8 flex flex-col">
+            <div className="bg-zorange/5 border-2 border-zorange/20 rounded-3xl p-7 flex flex-col">
+              <div className="w-12 h-12 bg-zorange/10 rounded-2xl flex items-center justify-center text-2xl mb-4">👤</div>
+              <h3 className="font-black text-lg text-zdark mb-2">Adult Demo</h3>
+              <p className="text-zdark/60 font-semibold text-sm leading-relaxed mb-6 flex-1">
+                A clean, professional survey for adults, caregivers, staff, or community members.
+              </p>
+              <Link
+                href="/survey/demo-adult"
+                className="inline-flex items-center justify-center px-5 py-3 bg-zorange text-white font-bold rounded-2xl hover:bg-zorange-dark transition-all shadow-sm text-sm"
+              >
+                Try Adult Demo →
+              </Link>
+            </div>
+
+            <div className="bg-zteal/5 border-2 border-zteal/20 rounded-3xl p-7 flex flex-col">
               <div className="w-12 h-12 bg-zteal/10 rounded-2xl flex items-center justify-center text-2xl mb-4">💼</div>
-              <h3 className="font-black text-xl text-zdark mb-2">Admin Demo</h3>
-              <p className="text-zdark/60 font-semibold leading-relaxed mb-6 flex-1">
+              <h3 className="font-black text-lg text-zdark mb-2">Admin Demo</h3>
+              <p className="text-zdark/60 font-semibold text-sm leading-relaxed mb-6 flex-1">
                 See how adults build surveys and review responses.
               </p>
               <Link
                 href="/admin"
-                className="inline-flex items-center justify-center px-6 py-3 bg-zteal text-white font-bold rounded-2xl hover:bg-zteal-dark transition-all shadow-sm"
+                className="inline-flex items-center justify-center px-5 py-3 bg-zteal text-white font-bold rounded-2xl hover:bg-zteal-dark transition-all shadow-sm text-sm"
               >
                 Try Admin Demo →
               </Link>
@@ -334,7 +348,7 @@ export default function LandingPage() {
             Zanmi is an early-stage EdTech SaaS platform focused on improving youth engagement, survey completion, and data quality for schools and youth-serving organizations.
           </p>
           <a
-            href="mailto:saugustin07@gmail.com"
+            href="mailto:hello@tryzanmi.com"
             className="text-sm font-bold text-zpurple hover:underline"
           >
             Contact the Founder →

@@ -53,7 +53,7 @@ export default function PilotPage() {
 
         {/* CTA */}
         <a
-          href="mailto:saugustin07@gmail.com?subject=Zanmi Pilot Application"
+          href="mailto:hello@tryzanmi.com?subject=Zanmi Pilot Application"
           className="inline-flex items-center gap-2 px-10 py-4 bg-zorange text-white font-black rounded-2xl shadow-game-sm hover:bg-zorange-dark transition-all btn-game text-lg"
         >
           Apply via Email →
