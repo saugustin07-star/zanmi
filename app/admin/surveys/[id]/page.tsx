@@ -1,7 +1,5 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-
-export const dynamic = 'force-dynamic';
 import {
   getSurveyById,
   getResponsesBySurveyId,
@@ -9,21 +7,48 @@ import {
 } from '@/lib/db';
 import type { DbQuestion, DbAnswer } from '@/types/survey';
 
+export const dynamic = 'force-dynamic';
+
 const BAR_COLORS = ['#7C3AED', '#14B8A6', '#F97316', '#FF7043', '#4CAF50', '#E91E63', '#607D8B'];
 
 export default async function SurveyResultsPage({ params }: { params: { id: string } }) {
-  const [survey, responses] = await Promise.all([
-    getSurveyById(params.id),
-    getResponsesBySurveyId(params.id),
-  ]);
+  // ── Fetch survey ─────────────────────────────────────────────────────────────
+  let survey;
+  try {
+    survey = await getSurveyById(params.id);
+  } catch (err) {
+    console.error('[Zanmi] survey results: getSurveyById failed:', err);
+    return <QueryErrorState message="Could not load survey. Check the browser console for details." />;
+  }
 
   if (!survey) notFound();
 
-  const answers = await getAnswersByResponseIds(responses.map(r => r.id));
+  // ── Fetch responses ──────────────────────────────────────────────────────────
+  let responses: Awaited<ReturnType<typeof getResponsesBySurveyId>> = [];
+  try {
+    responses = await getResponsesBySurveyId(params.id);
+  } catch (err) {
+    console.error('[Zanmi] survey results: getResponsesBySurveyId failed:', err);
+    // Non-fatal — show survey header with a warning instead of crashing
+    responses = [];
+  }
+
+  // ── Fetch answers ────────────────────────────────────────────────────────────
+  let answers: DbAnswer[] = [];
+  if (responses.length > 0) {
+    try {
+      answers = await getAnswersByResponseIds(responses.map(r => r.id));
+    } catch (err) {
+      console.error('[Zanmi] survey results: getAnswersByResponseIds failed:', err);
+      // Non-fatal — show question breakdown with empty counts
+      answers = [];
+    }
+  }
 
   const started   = responses.length;
   const completed = responses.filter(r => r.completed).length;
   const rate      = started > 0 ? Math.round((completed / started) * 100) : 0;
+  const questions = survey.questions ?? [];
 
   return (
     <div className="p-6 md:p-8 max-w-3xl">
@@ -41,9 +66,9 @@ export default async function SurveyResultsPage({ params }: { params: { id: stri
       <div className="flex items-start gap-4 mb-8">
         <div
           className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0"
-          style={{ backgroundColor: `${survey.color}22` }}
+          style={{ backgroundColor: survey.color ? `${survey.color}22` : '#7C3AED22' }}
         >
-          {survey.emoji}
+          {survey.emoji ?? '📋'}
         </div>
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-black text-zdark">{survey.title}</h1>
@@ -77,7 +102,7 @@ export default async function SurveyResultsPage({ params }: { params: { id: stri
         ))}
       </div>
 
-      {/* No responses state */}
+      {/* No responses yet */}
       {started === 0 && (
         <div className="bg-white rounded-3xl p-16 text-center shadow-card border border-gray-100">
           <div className="text-5xl mb-4">📭</div>
@@ -97,10 +122,21 @@ export default async function SurveyResultsPage({ params }: { params: { id: stri
         </div>
       )}
 
+      {/* No questions defined */}
+      {started > 0 && questions.length === 0 && (
+        <div className="bg-white rounded-3xl p-12 text-center shadow-card border border-gray-100">
+          <div className="text-4xl mb-3">❓</div>
+          <h3 className="text-lg font-black text-zdark mb-1">No questions found</h3>
+          <p className="text-zdark/40 font-semibold text-sm">
+            This survey has responses but no question records were returned.
+          </p>
+        </div>
+      )}
+
       {/* Per-question results */}
-      {started > 0 && (
+      {started > 0 && questions.length > 0 && (
         <div className="space-y-5">
-          {survey.questions.map((question, qi) => (
+          {questions.map((question, qi) => (
             <QuestionResult
               key={question.id}
               question={question}
@@ -110,6 +146,28 @@ export default async function SurveyResultsPage({ params }: { params: { id: stri
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Error state ───────────────────────────────────────────────────────────────
+
+function QueryErrorState({ message }: { message: string }) {
+  return (
+    <div className="p-6 md:p-8 max-w-3xl">
+      <div className="flex items-center gap-2 text-sm mb-6">
+        <Link href="/admin" className="text-zdark/40 hover:text-zdark font-bold transition-colors">
+          ← Dashboard
+        </Link>
+      </div>
+      <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+        <h2 className="font-black text-red-700 text-lg mb-2">Failed to load results</h2>
+        <p className="text-red-600 font-semibold text-sm">{message}</p>
+        <p className="text-red-400 text-xs font-semibold mt-2">
+          This may be a Supabase RLS policy blocking SELECT, or a connection issue.
+          Check the server logs for the full error.
+        </p>
+      </div>
     </div>
   );
 }
@@ -128,48 +186,50 @@ function QuestionResult({
   const { question_type } = question;
   const total = answers.length;
 
-  // No answers at all
   if (total === 0) {
     return (
       <div className="bg-white rounded-3xl p-6 shadow-card border border-gray-100">
         <QuestionHeader question={question} index={index} total={0} />
-        <p className="text-zdark/30 font-semibold text-sm italic mt-2">No responses for this question.</p>
+        <p className="text-zdark/30 font-semibold text-sm italic mt-3">No responses for this question.</p>
       </div>
     );
   }
 
-  // Free-text questions — list responses
+  // Free-text — list responses
   if (question_type === 'short_answer' || question_type === 'long_answer') {
-    const texts = answers.map(a => a.answer_value ?? '').filter(Boolean);
+    const texts = answers.map(a => (a.answer_value ?? '').trim()).filter(Boolean);
     return (
       <div className="bg-white rounded-3xl p-6 shadow-card border border-gray-100">
         <QuestionHeader question={question} index={index} total={total} />
         <div className="space-y-2 mt-4">
-          {texts.map((text, i) => (
-            <div key={i} className="bg-zbg rounded-xl px-4 py-3 text-sm font-semibold text-zdark leading-relaxed">
-              {text}
-            </div>
-          ))}
+          {texts.length === 0 ? (
+            <p className="text-zdark/30 font-semibold text-sm italic">No text responses recorded.</p>
+          ) : (
+            texts.map((text, i) => (
+              <div key={i} className="bg-zbg rounded-xl px-4 py-3 text-sm font-semibold text-zdark leading-relaxed">
+                {text}
+              </div>
+            ))
+          )}
         </div>
       </div>
     );
   }
 
-  // Choice / scale / yes_no — bar chart
+  // Choice / scale / yes_no — count by answer_value
   const counts: Record<string, number> = {};
   for (const a of answers) {
-    const val = a.answer_value ?? '';
+    const val = (a.answer_value ?? '').trim();
     if (val) counts[val] = (counts[val] ?? 0) + 1;
   }
 
-  // For yes_no, keep yes before no; otherwise sort by count descending
+  // For yes_no: pin yes above no, append any unexpected values
   let entries: [string, number][];
   if (question_type === 'yes_no') {
     const order = ['yes', 'no'];
     entries = order
       .filter(k => k in counts)
       .map(k => [k, counts[k]] as [string, number]);
-    // append any unexpected values
     for (const [k, v] of Object.entries(counts)) {
       if (!order.includes(k)) entries.push([k, v]);
     }
@@ -177,13 +237,25 @@ function QuestionResult({
     entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
   }
 
-  // Numeric average for rating questions
+  // Numeric average — only when values are actually numeric (e.g. "1"–"5")
+  // Safely skips text options like "Agree", "Strongly agree", etc.
   let avg: number | null = null;
   if (question_type === 'rating_scale' || question_type === 'scale') {
     const nums = answers
-      .map(a => parseFloat(a.answer_value ?? ''))
-      .filter(n => !isNaN(n));
-    if (nums.length > 0) avg = nums.reduce((s, n) => s + n, 0) / nums.length;
+      .map(a => parseFloat((a.answer_value ?? '').trim()))
+      .filter(n => Number.isFinite(n));
+    if (nums.length > 0) {
+      avg = nums.reduce((s, n) => s + n, 0) / nums.length;
+    }
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div className="bg-white rounded-3xl p-6 shadow-card border border-gray-100">
+        <QuestionHeader question={question} index={index} total={total} />
+        <p className="text-zdark/30 font-semibold text-sm italic mt-3">No valid answer values recorded.</p>
+      </div>
+    );
   }
 
   return (
@@ -209,7 +281,7 @@ function QuestionResult({
                 <div
                   className="h-full rounded-xl flex items-center px-3 transition-all"
                   style={{
-                    width: `${pct}%`,
+                    width: `${Math.max(pct, 0)}%`,
                     backgroundColor: BAR_COLORS[ai % BAR_COLORS.length],
                     minWidth: pct > 0 ? '2rem' : '0',
                   }}
@@ -227,7 +299,7 @@ function QuestionResult({
   );
 }
 
-// ── Shared question header ─────────────────────────────────────────────────────
+// ── Question header ───────────────────────────────────────────────────────────
 
 function QuestionHeader({
   question,
@@ -246,7 +318,9 @@ function QuestionHeader({
         {index + 1}
       </div>
       <div className="flex-1 min-w-0">
-        <h3 className="font-black text-zdark leading-snug">{question.question_text}</h3>
+        <h3 className="font-black text-zdark leading-snug">
+          {question.question_text || <span className="text-zdark/30 italic font-semibold">Question text missing</span>}
+        </h3>
         <div className="flex items-center gap-3 mt-1 flex-wrap">
           <span className="text-xs text-zdark/40 font-semibold">
             {total} response{total !== 1 ? 's' : ''}
