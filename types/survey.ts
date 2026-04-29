@@ -1,13 +1,17 @@
 // Database row types — mirror the actual Supabase table columns
 
-export type AudienceType = 'youth' | 'adult';
+export type AudienceType = 'student' | 'adult';
+
+export type SurveyStatus = 'draft' | 'published' | 'archived';
 
 export type QuestionType =
   | 'multiple_choice'
-  | 'emoji_rating'
+  | 'rating_scale'
   | 'yes_no'
-  | 'scale'
-  | 'short_answer';
+  | 'short_answer'
+  | 'long_answer'
+  | 'emoji_rating'  // legacy alias
+  | 'scale';        // legacy alias
 
 // Stored as JSONB in the questions table
 export interface QuestionOption {
@@ -23,8 +27,9 @@ export interface DbSurvey {
   description: string;
   emoji: string;
   color: string;
-  audience: AudienceType;
-  is_active: boolean;
+  audience_type: AudienceType;
+  status: SurveyStatus;
+  public_slug: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,9 +40,9 @@ export interface DbQuestion {
   survey_id: string;
   text: string;
   type: QuestionType;
-  options: QuestionOption[] | null; // null for short_answer
+  options: QuestionOption[] | null; // null for open-ended types
   required: boolean;
-  points: number;                   // 0 for adult surveys
+  points: number;
   order_index: number;
 }
 
@@ -45,11 +50,11 @@ export interface DbQuestion {
 export interface DbSurveyResponse {
   id: string;
   survey_id: string;
-  nickname: string | null;          // youth only
-  avatar_id: string | null;         // youth only
-  score: number;                    // accumulated points, 0 for adult
+  nickname: string | null;
+  avatar_id: string | null;
+  score: number;
   started_at: string;
-  completed_at: string | null;      // null if abandoned mid-survey
+  completed_at: string | null;
   created_at: string;
 }
 
@@ -58,12 +63,12 @@ export interface DbAnswer {
   id: string;
   response_id: string;
   question_id: string;
-  answer_value: string | null;      // selected option id for choice/scale/yes_no
-  answer_text: string | null;       // free text for short_answer
+  answer_value: string | null; // selected option id for choice/scale/yes_no/rating_scale
+  answer_text: string | null;  // free text for short_answer / long_answer
   created_at: string;
 }
 
-// ── Composite types used across the app ──────────────────────────────────────
+// ── Composite types ───────────────────────────────────────────────────────────
 
 export interface SurveyWithQuestions extends DbSurvey {
   questions: DbQuestion[];
@@ -79,8 +84,8 @@ export interface SurveyListItem {
   title: string;
   emoji: string;
   color: string;
-  audience: AudienceType;
-  is_active: boolean;
+  audience_type: AudienceType;
+  status: SurveyStatus;
   created_at: string;
   response_count: number;
   completion_rate: number;

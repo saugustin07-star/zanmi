@@ -13,6 +13,22 @@ import type {
 
 // ── Surveys ───────────────────────────────────────────────────────────────────
 
+export async function getSurveyBySlug(slug: string): Promise<SurveyWithQuestions | null> {
+  const { data, error } = await supabase
+    .from('surveys')
+    .select('*, questions(*)')
+    .eq('public_slug', slug)
+    .eq('status', 'published')
+    .eq('audience_type', 'student')
+    .single();
+  if (error) return null;
+  const survey = data as SurveyWithQuestions & { questions: DbQuestion[] };
+  survey.questions = (survey.questions ?? []).sort(
+    (a, b) => a.order_index - b.order_index
+  );
+  return survey;
+}
+
 export async function getSurveys(): Promise<DbSurvey[]> {
   const { data, error } = await supabase
     .from('surveys')
