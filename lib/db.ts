@@ -149,3 +149,33 @@ export async function getAnswersByResponseId(
   if (error) throw error;
   return data ?? [];
 }
+
+export async function getAnswersByResponseIds(
+  responseIds: string[]
+): Promise<DbAnswer[]> {
+  if (responseIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from('answers')
+    .select('*')
+    .in('response_id', responseIds);
+  if (error) throw error;
+  return data ?? [];
+}
+
+// ── Admin aggregates ──────────────────────────────────────────────────────────
+
+export async function getResponseCountsBySurvey(): Promise<
+  Record<string, { total: number; completed: number }>
+> {
+  const { data, error } = await supabase
+    .from('survey_responses')
+    .select('survey_id, completed');
+  if (error) throw error;
+  const counts: Record<string, { total: number; completed: number }> = {};
+  for (const row of (data ?? []) as Array<{ survey_id: string; completed: boolean }>) {
+    if (!counts[row.survey_id]) counts[row.survey_id] = { total: 0, completed: 0 };
+    counts[row.survey_id].total++;
+    if (row.completed) counts[row.survey_id].completed++;
+  }
+  return counts;
+}
