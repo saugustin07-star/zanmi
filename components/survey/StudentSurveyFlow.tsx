@@ -109,8 +109,13 @@ export default function StudentSurveyFlow({ survey }: Props) {
       setResponseId(id);
       setStep('question');
     } catch (err) {
-      console.error('[Zanmi] createStudentResponse failed:', err);
-      const detail = err instanceof Error ? err.message : String(err);
+      console.error('[Zanmi] createStudentResponse failed:', JSON.stringify(err, null, 2));
+      const detail =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err !== null && 'message' in err
+            ? String((err as { message: unknown }).message)
+            : JSON.stringify(err, null, 2);
       setSaveError(
         process.env.NODE_ENV === 'development'
           ? `Start failed: ${detail}`
