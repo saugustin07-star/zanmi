@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import ConfettiBlast from '@/components/survey/ConfettiBlast';
 import { AVATAR_COMPONENTS } from '@/components/avatars';
-import type { SurveyWithQuestions, DbQuestion, QuestionOption } from '@/types/survey';
+import type { SurveyWithQuestions, DbQuestion } from '@/types/survey';
 
 // ── Avatar roster ─────────────────────────────────────────────────────────────
 
@@ -19,13 +19,30 @@ const AVATARS = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-// Supabase JSONB may arrive already parsed or as a JSON string — handle both.
-function parseOptions(raw: unknown): QuestionOption[] {
+// Supabase JSONB options may be plain strings, objects, or a JSON string.
+// Always returns a plain string[] so rendering never depends on object shape.
+function normalizeOptions(raw: unknown): string[] {
   if (!raw) return [];
-  if (Array.isArray(raw)) return raw as QuestionOption[];
-  if (typeof raw === 'string') {
-    try { return JSON.parse(raw) as QuestionOption[]; } catch { return []; }
+
+  if (Array.isArray(raw)) {
+    return raw.map(item => {
+      if (typeof item === 'string') return item;
+      if (typeof item === 'object' && item !== null) {
+        const obj = item as Record<string, unknown>;
+        return String(obj.label ?? obj.value ?? obj.text ?? '');
+      }
+      return String(item);
+    }).filter(Boolean);
   }
+
+  if (typeof raw === 'string') {
+    try {
+      return normalizeOptions(JSON.parse(raw));
+    } catch {
+      return raw.split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+
   return [];
 }
 
@@ -341,27 +358,26 @@ function QuestionInput({
   onChange: (v: string) => void;
 }) {
   const { question_type } = question;
-  const options = parseOptions(question.options);
+  const optionLabels = normalizeOptions(question.options);
 
   // ── Rating scale ─────────────────────────────────────────────────────────
   // Use option labels when they exist; fall back to 1–5 buttons.
   if (question_type === 'rating_scale' || question_type === 'scale') {
-    if (options.length > 0) {
+    if (optionLabels.length > 0) {
       return (
         <div className="space-y-2.5">
-          {options.map(opt => (
+          {optionLabels.map(label => (
             <button
-              key={opt.id}
-              onClick={() => onChange(opt.id)}
+              key={label}
+              onClick={() => onChange(label)}
               className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 font-semibold text-left transition-all ${
-                value === opt.id
+                value === label
                   ? 'border-zpurple bg-zpurple/5 text-zpurple'
-                  : 'border-zdark/10 bg-zdark/[0.02] text-zdark hover:border-zpurple/30 hover:bg-zpurple/5'
+                  : 'border-slate-200 bg-white text-slate-900 hover:border-zpurple/40 hover:bg-zpurple/5'
               }`}
             >
-              {opt.emoji && <span className="text-xl leading-none flex-shrink-0">{opt.emoji}</span>}
-              <span className="flex-1">{opt.text}</span>
-              {value === opt.id && <span className="text-zpurple font-black text-sm flex-shrink-0">✓</span>}
+              <span className="flex-1">{label}</span>
+              {value === label && <span className="text-zpurple font-black text-sm flex-shrink-0">✓</span>}
             </button>
           ))}
         </div>
@@ -371,14 +387,14 @@ function QuestionInput({
     return (
       <div>
         <div className="grid grid-cols-5 gap-2">
-          {[1, 2, 3, 4, 5].map(n => (
+          {['1', '2', '3', '4', '5'].map(n => (
             <button
               key={n}
-              onClick={() => onChange(String(n))}
+              onClick={() => onChange(n)}
               className={`aspect-square rounded-2xl text-lg font-black transition-all ${
-                value === String(n)
+                value === n
                   ? 'bg-zpurple text-white scale-110 shadow-game-sm'
-                  : 'bg-zdark/5 text-zdark hover:bg-zpurple/10 hover:text-zpurple'
+                  : 'bg-slate-100 text-slate-900 hover:bg-zpurple/10 hover:text-zpurple'
               }`}
             >
               {n}
@@ -386,8 +402,8 @@ function QuestionInput({
           ))}
         </div>
         <div className="flex justify-between mt-2.5 px-0.5">
-          <span className="text-xs text-zdark/40 font-semibold">Not at all</span>
-          <span className="text-xs text-zdark/40 font-semibold">Totally!</span>
+          <span className="text-xs text-slate-400 font-semibold">Not at all</span>
+          <span className="text-xs text-slate-400 font-semibold">Totally!</span>
         </div>
       </div>
     );
@@ -406,7 +422,7 @@ function QuestionInput({
                 ? opt === 'yes'
                   ? 'bg-zteal text-white scale-[1.03] shadow-game-sm'
                   : 'bg-zyellow text-white scale-[1.03] shadow-game-sm'
-                : 'bg-zdark/5 text-zdark hover:bg-zdark/10'
+                : 'bg-slate-100 text-slate-900 hover:bg-slate-200'
             }`}
           >
             {opt === 'yes' ? '👍 Yes' : '👎 No'}
@@ -418,28 +434,25 @@ function QuestionInput({
 
   // ── Multiple choice / emoji rating ────────────────────────────────────────
   if (question_type === 'multiple_choice' || question_type === 'emoji_rating') {
-    if (options.length === 0) {
+    if (optionLabels.length === 0) {
       return (
-        <p className="text-zdark/40 italic text-sm">No options available for this question.</p>
+        <p className="text-slate-400 italic text-sm">No answer options found for this question.</p>
       );
     }
     return (
       <div className="space-y-2.5">
-        {options.map(opt => (
+        {optionLabels.map(label => (
           <button
-            key={opt.id}
-            onClick={() => onChange(opt.id)}
+            key={label}
+            onClick={() => onChange(label)}
             className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 font-semibold text-left transition-all ${
-              value === opt.id
+              value === label
                 ? 'border-zpurple bg-zpurple/5 text-zpurple'
-                : 'border-zdark/10 bg-zdark/[0.02] text-zdark hover:border-zpurple/30 hover:bg-zpurple/5'
+                : 'border-slate-200 bg-white text-slate-900 hover:border-zpurple/40 hover:bg-zpurple/5'
             }`}
           >
-            {opt.emoji && (
-              <span className="text-xl leading-none flex-shrink-0">{opt.emoji}</span>
-            )}
-            <span className="flex-1">{opt.text}</span>
-            {value === opt.id && (
+            <span className="flex-1">{label}</span>
+            {value === label && (
               <span className="text-zpurple font-black text-sm flex-shrink-0">✓</span>
             )}
           </button>
