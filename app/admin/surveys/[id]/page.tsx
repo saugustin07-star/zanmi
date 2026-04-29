@@ -1,54 +1,161 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import {
-  getSurveyById,
-  getResponsesBySurveyId,
-  getAnswersByResponseIds,
-} from '@/lib/db';
-import type { DbQuestion, DbAnswer } from '@/types/survey';
+'use client';
 
-export const dynamic = 'force-dynamic';
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
+import type { DbSurvey, DbQuestion, DbSurveyResponse, DbAnswer } from '@/types/survey';
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+type LoadState =
+  | { phase: 'loading' }
+  | { phase: 'error'; msg: string }
+  | {
+      phase: 'ready';
+      survey: DbSurvey;
+      questions: DbQuestion[];
+      responses: DbSurveyResponse[];
+      answers: DbAnswer[];
+    };
 
 const BAR_COLORS = ['#7C3AED', '#14B8A6', '#F97316', '#FF7043', '#4CAF50', '#E91E63', '#607D8B'];
+const IS_DEV = process.env.NODE_ENV === 'development';
 
-export default async function SurveyResultsPage({ params }: { params: { id: string } }) {
-  // ── Fetch survey ─────────────────────────────────────────────────────────────
-  let survey;
-  try {
-    survey = await getSurveyById(params.id);
-  } catch (err) {
-    console.error('[Zanmi] survey results: getSurveyById failed:', err);
-    return <QueryErrorState message="Could not load survey. Check the browser console for details." />;
-  }
+// ── Page ───────────────────────────────────────────────────────────────────────
 
-  if (!survey) notFound();
+export default function SurveyResultsPage() {
+  const params  = useParams();
+  const id      = typeof params.id === 'string' ? params.id : String(params.id ?? '');
+  const [state, setState] = useState<LoadState>({ phase: 'loading' });
 
-  // ── Fetch responses ──────────────────────────────────────────────────────────
-  let responses: Awaited<ReturnType<typeof getResponsesBySurveyId>> = [];
-  try {
-    responses = await getResponsesBySurveyId(params.id);
-  } catch (err) {
-    console.error('[Zanmi] survey results: getResponsesBySurveyId failed:', err);
-    // Non-fatal — show survey header with a warning instead of crashing
-    responses = [];
-  }
-
-  // ── Fetch answers ────────────────────────────────────────────────────────────
-  let answers: DbAnswer[] = [];
-  if (responses.length > 0) {
-    try {
-      answers = await getAnswersByResponseIds(responses.map(r => r.id));
-    } catch (err) {
-      console.error('[Zanmi] survey results: getAnswersByResponseIds failed:', err);
-      // Non-fatal — show question breakdown with empty counts
-      answers = [];
+  const load = useCallback(async () => {
+    if (!id) {
+      setState({ phase: 'error', msg: 'No survey ID in route params.' });
+      return;
     }
+    setState({ phase: 'loading' });
+
+    // 1. Survey row
+    console.log('[Zanmi] results: fetching survey', id);
+    const { data: surveyData, error: surveyErr } = await supabase
+      .from('surveys')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (surveyErr || !surveyData) {
+      const msg = surveyErr?.message ?? 'Survey not found.';
+      console.error('[Zanmi] results: survey fetch failed:', JSON.stringify(surveyErr, null, 2));
+      setState({ phase: 'error', msg: `Survey query failed: ${msg}` });
+      return;
+    }
+
+    // 2. Questions
+    console.log('[Zanmi] results: fetching questions for survey', id);
+    const { data: questionsData, error: questionsErr } = await supabase
+      .from('questions')
+      .select('*')
+      .eq('survey_id', id)
+      .order('order_index');
+
+    if (questionsErr) {
+      console.error('[Zanmi] results: questions fetch failed:', JSON.stringify(questionsErr, null, 2));
+    }
+
+    // 3. Responses
+    console.log('[Zanmi] results: fetching responses for survey', id);
+    const { data: responsesData, error: responsesErr } = await supabase
+      .from('survey_responses')
+      .select('*')
+      .eq('survey_id', id)
+      .order('created_at', { ascending: false });
+
+    if (responsesErr) {
+      console.error('[Zanmi] results: responses fetch failed:', JSON.stringify(responsesErr, null, 2));
+    }
+
+    const responses = (responsesData ?? []) as DbSurveyResponse[];
+
+    // 4. Answers (only if there are responses)
+    let answers: DbAnswer[] = [];
+    if (responses.length > 0) {
+      const responseIds = responses.map(r => r.id);
+      console.log('[Zanmi] results: fetching answers for', responseIds.length, 'response(s)');
+      const { data: answersData, error: answersErr } = await supabase
+        .from('answers')
+        .select('*')
+        .in('response_id', responseIds);
+
+      if (answersErr) {
+        console.error('[Zanmi] results: answers fetch failed:', JSON.stringify(answersErr, null, 2));
+      }
+      answers = (answersData ?? []) as DbAnswer[];
+    }
+
+    console.log('[Zanmi] results: loaded — questions:', questionsData?.length ?? 0,
+      '| responses:', responses.length, '| answers:', answers.length);
+
+    setState({
+      phase: 'ready',
+      survey:    surveyData as DbSurvey,
+      questions: ((questionsData ?? []) as DbQuestion[]).sort((a, b) => a.order_index - b.order_index),
+      responses,
+      answers,
+    });
+  }, [id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // ── Loading ────────────────────────────────────────────────────────────────
+
+  if (state.phase === 'loading') {
+    return (
+      <div className="p-6 md:p-8 max-w-3xl">
+        <BackLink label="Dashboard" href="/admin" />
+        <div className="animate-pulse space-y-4 mt-6">
+          <div className="h-14 w-14 bg-gray-200 rounded-2xl" />
+          <div className="h-7 w-64 bg-gray-200 rounded-xl" />
+          <div className="grid grid-cols-3 gap-4 mt-6">
+            {[0, 1, 2].map(i => <div key={i} className="h-24 bg-gray-100 rounded-2xl" />)}
+          </div>
+          {[0, 1].map(i => <div key={i} className="h-32 bg-gray-100 rounded-3xl" />)}
+        </div>
+        <p className="text-zdark/40 font-semibold text-sm mt-4">Loading results…</p>
+      </div>
+    );
   }
 
+  // ── Error ──────────────────────────────────────────────────────────────────
+
+  if (state.phase === 'error') {
+    return (
+      <div className="p-6 md:p-8 max-w-3xl">
+        <BackLink label="Dashboard" href="/admin" />
+        <div className="mt-6 bg-red-50 border border-red-200 rounded-2xl p-6">
+          <h2 className="font-black text-red-700 text-lg mb-2">Error loading results</h2>
+          <p className="text-red-600 font-semibold text-sm font-mono break-all">{state.msg}</p>
+          <p className="text-red-400 text-xs font-semibold mt-3">
+            Check the browser console for the full Supabase error. This is often an RLS policy blocking SELECT.
+          </p>
+          <button
+            onClick={load}
+            className="mt-4 px-4 py-2 bg-red-600 text-white font-bold text-sm rounded-xl hover:bg-red-700 transition-colors"
+          >
+            Try again
+          </button>
+        </div>
+        {IS_DEV && <DevDebug id={id} />}
+      </div>
+    );
+  }
+
+  // ── Ready ──────────────────────────────────────────────────────────────────
+
+  const { survey, questions, responses, answers } = state;
   const started   = responses.length;
   const completed = responses.filter(r => r.completed).length;
   const rate      = started > 0 ? Math.round((completed / started) * 100) : 0;
-  const questions = survey.questions ?? [];
 
   return (
     <div className="p-6 md:p-8 max-w-3xl">
@@ -62,7 +169,7 @@ export default async function SurveyResultsPage({ params }: { params: { id: stri
         <span className="font-bold text-zdark/60 truncate">{survey.title}</span>
       </div>
 
-      {/* Survey header */}
+      {/* Survey header — always visible */}
       <div className="flex items-start gap-4 mb-8">
         <div
           className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0"
@@ -75,6 +182,16 @@ export default async function SurveyResultsPage({ params }: { params: { id: stri
           {survey.description && (
             <p className="text-zdark/50 font-semibold text-sm mt-0.5">{survey.description}</p>
           )}
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+              survey.status === 'published' ? 'bg-green-50 text-green-700' :
+              survey.status === 'archived'  ? 'bg-amber-50 text-amber-700' :
+                                              'bg-gray-100 text-gray-500'
+            }`}>{survey.status}</span>
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-zpurple/10 text-zpurple">
+              {survey.audience_type}
+            </span>
+          </div>
         </div>
         {survey.public_slug && (
           <Link
@@ -86,6 +203,16 @@ export default async function SurveyResultsPage({ params }: { params: { id: stri
           </Link>
         )}
       </div>
+
+      {/* Dev debug panel */}
+      {IS_DEV && (
+        <DevDebug
+          id={id}
+          questions={questions.length}
+          responses={responses.length}
+          answers={answers.length}
+        />
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
@@ -102,38 +229,36 @@ export default async function SurveyResultsPage({ params }: { params: { id: stri
         ))}
       </div>
 
-      {/* No responses yet */}
+      {/* No responses */}
       {started === 0 && (
-        <div className="bg-white rounded-3xl p-16 text-center shadow-card border border-gray-100">
-          <div className="text-5xl mb-4">📭</div>
-          <h3 className="text-xl font-black text-zdark mb-2">No responses yet</h3>
-          <p className="text-zdark/50 font-semibold mb-6">
-            Share the survey link to start collecting responses.
+        <div className="bg-white rounded-3xl p-10 shadow-card border border-gray-100">
+          <p className="text-zdark/60 font-semibold text-center leading-relaxed">
+            No responses yet. Once students complete this survey, results will appear here.
           </p>
           {survey.public_slug && (
-            <Link
-              href={`/s/${survey.public_slug}`}
-              target="_blank"
-              className="inline-block px-6 py-3 bg-zpurple text-white font-bold rounded-2xl hover:bg-zpurple-dark transition-all text-sm"
-            >
-              Preview Survey ↗
-            </Link>
+            <div className="text-center mt-5">
+              <Link
+                href={`/s/${survey.public_slug}`}
+                target="_blank"
+                className="inline-block px-6 py-3 bg-zpurple text-white font-bold rounded-2xl hover:bg-zpurple-dark transition-all text-sm"
+              >
+                Open Survey Link ↗
+              </Link>
+            </div>
           )}
         </div>
       )}
 
-      {/* No questions defined */}
+      {/* Per-question results */}
       {started > 0 && questions.length === 0 && (
-        <div className="bg-white rounded-3xl p-12 text-center shadow-card border border-gray-100">
-          <div className="text-4xl mb-3">❓</div>
-          <h3 className="text-lg font-black text-zdark mb-1">No questions found</h3>
-          <p className="text-zdark/40 font-semibold text-sm">
-            This survey has responses but no question records were returned.
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+          <p className="font-bold text-amber-800 text-sm">
+            {responses.length} response{responses.length !== 1 ? 's' : ''} found, but no questions were returned for this survey.
+            Check that questions exist in the database with <code className="font-mono">survey_id = {id}</code>.
           </p>
         </div>
       )}
 
-      {/* Per-question results */}
       {started > 0 && questions.length > 0 && (
         <div className="space-y-5">
           {questions.map((question, qi) => (
@@ -150,25 +275,38 @@ export default async function SurveyResultsPage({ params }: { params: { id: stri
   );
 }
 
-// ── Error state ───────────────────────────────────────────────────────────────
+// ── Dev debug panel ────────────────────────────────────────────────────────────
 
-function QueryErrorState({ message }: { message: string }) {
+function DevDebug({
+  id,
+  questions,
+  responses,
+  answers,
+}: {
+  id: string;
+  questions?: number;
+  responses?: number;
+  answers?: number;
+}) {
   return (
-    <div className="p-6 md:p-8 max-w-3xl">
-      <div className="flex items-center gap-2 text-sm mb-6">
-        <Link href="/admin" className="text-zdark/40 hover:text-zdark font-bold transition-colors">
-          ← Dashboard
-        </Link>
-      </div>
-      <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
-        <h2 className="font-black text-red-700 text-lg mb-2">Failed to load results</h2>
-        <p className="text-red-600 font-semibold text-sm">{message}</p>
-        <p className="text-red-400 text-xs font-semibold mt-2">
-          This may be a Supabase RLS policy blocking SELECT, or a connection issue.
-          Check the server logs for the full error.
-        </p>
-      </div>
+    <div className="mb-6 bg-slate-900 text-green-400 rounded-2xl p-4 font-mono text-xs space-y-1">
+      <p className="text-slate-400 font-bold uppercase tracking-wider text-xs mb-2">Dev Debug</p>
+      <p>surveyId: <span className="text-white">{id || '(empty)'}</span></p>
+      {questions  !== undefined && <p>questions loaded:  <span className="text-white">{questions}</span></p>}
+      {responses  !== undefined && <p>responses loaded:  <span className="text-white">{responses}</span></p>}
+      {answers    !== undefined && <p>answers loaded:    <span className="text-white">{answers}</span></p>}
+      <p className="text-slate-500 pt-1">Queries: surveys·id → questions·survey_id → survey_responses·survey_id → answers·response_id[]</p>
     </div>
+  );
+}
+
+// ── Back link ─────────────────────────────────────────────────────────────────
+
+function BackLink({ label, href }: { label: string; href: string }) {
+  return (
+    <Link href={href} className="text-zdark/40 hover:text-zdark font-bold text-sm transition-colors">
+      ← {label}
+    </Link>
   );
 }
 
@@ -195,41 +333,37 @@ function QuestionResult({
     );
   }
 
-  // Free-text — list responses
+  // Free-text
   if (question_type === 'short_answer' || question_type === 'long_answer') {
     const texts = answers.map(a => (a.answer_value ?? '').trim()).filter(Boolean);
     return (
       <div className="bg-white rounded-3xl p-6 shadow-card border border-gray-100">
         <QuestionHeader question={question} index={index} total={total} />
         <div className="space-y-2 mt-4">
-          {texts.length === 0 ? (
-            <p className="text-zdark/30 font-semibold text-sm italic">No text responses recorded.</p>
-          ) : (
-            texts.map((text, i) => (
-              <div key={i} className="bg-zbg rounded-xl px-4 py-3 text-sm font-semibold text-zdark leading-relaxed">
-                {text}
-              </div>
-            ))
-          )}
+          {texts.length === 0
+            ? <p className="text-zdark/30 font-semibold text-sm italic">No text responses recorded.</p>
+            : texts.map((text, i) => (
+                <div key={i} className="bg-zbg rounded-xl px-4 py-3 text-sm font-semibold text-zdark leading-relaxed">
+                  {text}
+                </div>
+              ))
+          }
         </div>
       </div>
     );
   }
 
-  // Choice / scale / yes_no — count by answer_value
+  // Choice / scale / yes_no
   const counts: Record<string, number> = {};
   for (const a of answers) {
     const val = (a.answer_value ?? '').trim();
     if (val) counts[val] = (counts[val] ?? 0) + 1;
   }
 
-  // For yes_no: pin yes above no, append any unexpected values
   let entries: [string, number][];
   if (question_type === 'yes_no') {
     const order = ['yes', 'no'];
-    entries = order
-      .filter(k => k in counts)
-      .map(k => [k, counts[k]] as [string, number]);
+    entries = order.filter(k => k in counts).map(k => [k, counts[k]] as [string, number]);
     for (const [k, v] of Object.entries(counts)) {
       if (!order.includes(k)) entries.push([k, v]);
     }
@@ -237,23 +371,20 @@ function QuestionResult({
     entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
   }
 
-  // Numeric average — only when values are actually numeric (e.g. "1"–"5")
-  // Safely skips text options like "Agree", "Strongly agree", etc.
+  // Numeric average — only when values are actually numeric (e.g. 1–5 scale)
   let avg: number | null = null;
   if (question_type === 'rating_scale' || question_type === 'scale') {
     const nums = answers
       .map(a => parseFloat((a.answer_value ?? '').trim()))
       .filter(n => Number.isFinite(n));
-    if (nums.length > 0) {
-      avg = nums.reduce((s, n) => s + n, 0) / nums.length;
-    }
+    if (nums.length > 0) avg = nums.reduce((s, n) => s + n, 0) / nums.length;
   }
 
   if (entries.length === 0) {
     return (
       <div className="bg-white rounded-3xl p-6 shadow-card border border-gray-100">
         <QuestionHeader question={question} index={index} total={total} />
-        <p className="text-zdark/30 font-semibold text-sm italic mt-3">No valid answer values recorded.</p>
+        <p className="text-zdark/30 font-semibold text-sm italic mt-3">No answer values recorded.</p>
       </div>
     );
   }
@@ -286,9 +417,7 @@ function QuestionResult({
                     minWidth: pct > 0 ? '2rem' : '0',
                   }}
                 >
-                  {pct >= 12 && (
-                    <span className="text-white font-black text-xs">{pct}%</span>
-                  )}
+                  {pct >= 12 && <span className="text-white font-black text-xs">{pct}%</span>}
                 </div>
               </div>
             </div>
@@ -299,7 +428,7 @@ function QuestionResult({
   );
 }
 
-// ── Question header ───────────────────────────────────────────────────────────
+// ── Question header ────────────────────────────────────────────────────────────
 
 function QuestionHeader({
   question,
