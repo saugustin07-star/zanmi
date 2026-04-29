@@ -7,7 +7,7 @@ export default function PilotPage() {
       <nav className="bg-white border-b border-gray-100 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center">
-            <img src="/zanmi-logo.png" alt="Zanmi" className="h-9 w-auto" />
+            <img src="/zanmi-icon.png" alt="Zanmi" className="h-9 w-auto" />
           </Link>
           <Link href="/" className="text-sm font-bold text-zdark/50 hover:text-zdark transition-colors">← Back to Home</Link>
         </div>

@@ -86,7 +86,7 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center">
-            <img src="/zanmi-logo.png" alt="Zanmi" className="h-10 w-auto" />
+            <img src="/zanmi-icon.png" alt="Zanmi" className="h-10 w-auto" />
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm font-bold text-zdark/60">
             <a href="#how" className="hover:text-zdark transition-colors">How It Works</a>
@@ -387,7 +387,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center">
-              <img src="/zanmi-logo.png" alt="Zanmi" className="h-8 w-auto brightness-0 invert" />
+              <img src="/zanmi-icon.png" alt="Zanmi" className="h-8 w-auto brightness-0 invert" />
             </div>
             <p className="text-white/40 text-xs font-semibold text-center">
               Surveys that feel like a game, insights that feel human.

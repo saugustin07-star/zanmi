@@ -38,7 +38,7 @@ export default function PartnersPage() {
       <nav className="bg-white border-b border-gray-100 px-6 py-4 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center">
-            <img src="/zanmi-logo.png" alt="Zanmi" className="h-9 w-auto" />
+            <img src="/zanmi-icon.png" alt="Zanmi" className="h-9 w-auto" />
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/" className="text-sm font-bold text-zdark/50 hover:text-zdark transition-colors hidden sm:block">← Home</Link>
@@ -189,7 +189,7 @@ export default function PartnersPage() {
       {/* Footer */}
       <footer className="bg-zdark py-10">
         <div className="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <img src="/zanmi-logo.png" alt="Zanmi" className="h-7 w-auto brightness-0 invert" />
+          <img src="/zanmi-icon.png" alt="Zanmi" className="h-7 w-auto brightness-0 invert" />
           <p className="text-white/40 text-xs font-semibold">Surveys that feel like a game, insights that feel human.</p>
           <Link href="/" className="text-white/40 text-sm font-semibold hover:text-white/70 transition-colors">← Back to Home</Link>
         </div>
