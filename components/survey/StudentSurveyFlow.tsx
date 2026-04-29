@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import ConfettiBlast from '@/components/survey/ConfettiBlast';
 import { AVATAR_COMPONENTS } from '@/components/avatars';
-import type { SurveyWithQuestions, DbQuestion } from '@/types/survey';
+import type { SurveyWithQuestions, DbQuestion, QuestionOption } from '@/types/survey';
 
 // ── Avatar roster ─────────────────────────────────────────────────────────────
 
@@ -17,6 +17,18 @@ const AVATARS = [
   { id: 'luna',  label: 'Luna',  ringColor: 'border-zpurple' },
 ];
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Supabase JSONB may arrive already parsed or as a JSON string — handle both.
+function parseOptions(raw: unknown): QuestionOption[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw as QuestionOption[];
+  if (typeof raw === 'string') {
+    try { return JSON.parse(raw) as QuestionOption[]; } catch { return []; }
+  }
+  return [];
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Step = 'nickname' | 'avatar' | 'question' | 'complete';
@@ -28,19 +40,27 @@ interface Props {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function StudentSurveyFlow({ survey }: Props) {
-  const [step, setStep]               = useState<Step>('nickname');
-  const [nickname, setNickname]       = useState('');
-  const [avatarId, setAvatarId]       = useState<string | null>(null);
+  const [step, setStep]                 = useState<Step>('nickname');
+  const [nickname, setNickname]         = useState('');
+  const [avatarId, setAvatarId]         = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers]         = useState<Record<string, string>>({});
-  const [score, setScore]             = useState(0);
-  const [currentAnswer, setCurrentAnswer] = useState('');
-  const [justEarned, setJustEarned]   = useState<number | null>(null);
+  // All answers keyed by question ID — single source of truth, never undefined
+  const [answers, setAnswers]           = useState<Record<string, string>>({});
+  const [score, setScore]               = useState(0);
+  const [justEarned, setJustEarned]     = useState<number | null>(null);
 
-  const questions    = survey.questions;
-  const question     = questions[currentIndex];
-  const total        = questions.length;
-  const AvatarComp   = avatarId ? AVATAR_COMPONENTS[avatarId] : null;
+  const questions  = survey.questions;
+  const question   = questions[currentIndex];
+  const total      = questions.length;
+  const AvatarComp = avatarId ? AVATAR_COMPONENTS[avatarId] : null;
+
+  // Derive the current answer from the map — always a string, never undefined
+  const currentAnswer = question ? (answers[question.id] ?? '') : '';
+  const canAdvance    = String(currentAnswer).trim().length > 0;
+
+  function setAnswer(questionId: string, value: string) {
+    setAnswers(prev => ({ ...prev, [questionId]: value }));
+  }
 
   function flashPoints(pts: number) {
     setJustEarned(pts);
@@ -58,12 +78,10 @@ export default function StudentSurveyFlow({ survey }: Props) {
   }
 
   function handleNext() {
-    if (!currentAnswer.trim()) return;
-    const pts = question.points > 0 ? question.points : 10;
-    setAnswers(prev => ({ ...prev, [question.id]: currentAnswer }));
+    if (!canAdvance || !question) return;
+    const pts = (question.points ?? 0) > 0 ? question.points : 10;
     setScore(prev => prev + pts);
     flashPoints(pts);
-    setCurrentAnswer('');
     if (currentIndex + 1 >= total) {
       setStep('complete');
     } else {
@@ -130,7 +148,7 @@ export default function StudentSurveyFlow({ survey }: Props) {
             </div>
             <div className="grid grid-cols-3 gap-3 mb-6">
               {AVATARS.map(av => {
-                const Comp      = AVATAR_COMPONENTS[av.id];
+                const Comp       = AVATAR_COMPONENTS[av.id];
                 const isSelected = avatarId === av.id;
                 return (
                   <button
@@ -197,9 +215,10 @@ export default function StudentSurveyFlow({ survey }: Props) {
 
   // ── Question step ─────────────────────────────────────────────────────────
 
+  if (!question) return null;
+
   const progressPct = (currentIndex / total) * 100;
   const isLast      = currentIndex + 1 === total;
-  const canAdvance  = currentAnswer.trim().length > 0;
 
   return (
     <div className="min-h-screen bg-zbg flex flex-col">
@@ -258,20 +277,22 @@ export default function StudentSurveyFlow({ survey }: Props) {
         <div className="max-w-lg mx-auto" key={currentIndex}>
           <div className="bg-white rounded-3xl p-6 shadow-card border border-gray-100 mb-4 animate-slide-up">
 
-            {question.points > 0 && (
+            {(question.points ?? 0) > 0 && (
               <div className="inline-flex items-center gap-1 bg-zyellow/10 border border-zyellow/20 px-2.5 py-1 rounded-full text-xs font-black text-zyellow mb-4">
                 ⭐ +{question.points} pts
               </div>
             )}
 
             <h2 className="text-lg font-black text-zdark mb-6 leading-snug">
-              {question.question_text || <span className="text-zdark/30 italic">Question text missing</span>}
+              {question.question_text || (
+                <span className="text-zdark/30 italic">Question text missing</span>
+              )}
             </h2>
 
             <QuestionInput
               question={question}
               value={currentAnswer}
-              onChange={setCurrentAnswer}
+              onChange={v => setAnswer(question.id, v)}
             />
 
           </div>
@@ -319,10 +340,34 @@ function QuestionInput({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const { question_type, options } = question;
+  const { question_type } = question;
+  const options = parseOptions(question.options);
 
-  // ── Rating scale (1–5) ────────────────────────────────────────────────────
+  // ── Rating scale ─────────────────────────────────────────────────────────
+  // Use option labels when they exist; fall back to 1–5 buttons.
   if (question_type === 'rating_scale' || question_type === 'scale') {
+    if (options.length > 0) {
+      return (
+        <div className="space-y-2.5">
+          {options.map(opt => (
+            <button
+              key={opt.id}
+              onClick={() => onChange(opt.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 font-semibold text-left transition-all ${
+                value === opt.id
+                  ? 'border-zpurple bg-zpurple/5 text-zpurple'
+                  : 'border-zdark/10 bg-zdark/[0.02] text-zdark hover:border-zpurple/30 hover:bg-zpurple/5'
+              }`}
+            >
+              {opt.emoji && <span className="text-xl leading-none flex-shrink-0">{opt.emoji}</span>}
+              <span className="flex-1">{opt.text}</span>
+              {value === opt.id && <span className="text-zpurple font-black text-sm flex-shrink-0">✓</span>}
+            </button>
+          ))}
+        </div>
+      );
+    }
+    // Fallback: numeric 1–5
     return (
       <div>
         <div className="grid grid-cols-5 gap-2">
@@ -373,9 +418,14 @@ function QuestionInput({
 
   // ── Multiple choice / emoji rating ────────────────────────────────────────
   if (question_type === 'multiple_choice' || question_type === 'emoji_rating') {
+    if (options.length === 0) {
+      return (
+        <p className="text-zdark/40 italic text-sm">No options available for this question.</p>
+      );
+    }
     return (
       <div className="space-y-2.5">
-        {(options ?? []).map(opt => (
+        {options.map(opt => (
           <button
             key={opt.id}
             onClick={() => onChange(opt.id)}
