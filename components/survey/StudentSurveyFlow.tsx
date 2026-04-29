@@ -89,28 +89,33 @@ export default function StudentSurveyFlow({ survey }: Props) {
   }
 
   function handleNicknameSubmit() {
-    if (!nickname.trim()) return;
     setStep('avatar');
   }
 
-  // Called when student clicks "Start Survey" on the avatar step.
-  // Creates the response row in Supabase before questions begin.
+  // Called when student clicks "Start Survey". Creates the survey_responses row.
   async function handleAvatarSubmit() {
-    if (!avatarId || isStarting) return;
+    if (isStarting) return;
     setIsStarting(true);
     setSaveError(null);
     try {
+      // Only include fields that exist in survey_responses — nothing extra.
       const id = await createStudentResponse({
         survey_id: survey.id,
         audience_type: 'student',
         respondent_nickname: nickname.trim() || null,
-        avatar: avatarId,
+        avatar: avatarId || null,
         completed: false,
       });
       setResponseId(id);
       setStep('question');
-    } catch {
-      setSaveError('Something went wrong starting the survey. Please try again.');
+    } catch (err) {
+      console.error('[Zanmi] createStudentResponse failed:', err);
+      const detail = err instanceof Error ? err.message : String(err);
+      setSaveError(
+        process.env.NODE_ENV === 'development'
+          ? `Start failed: ${detail}`
+          : 'Something went wrong. Please try again.'
+      );
     } finally {
       setIsStarting(false);
     }
@@ -129,7 +134,7 @@ export default function StudentSurveyFlow({ survey }: Props) {
       setSaveError(null);
       setIsSaving(true);
       try {
-        if (!responseId) throw new Error('No response ID');
+        if (!responseId) throw new Error('No response ID — was Start Survey clicked?');
         const batch = Object.entries(answers).map(([questionId, value]) => ({
           response_id: responseId,
           question_id: questionId,
@@ -138,9 +143,14 @@ export default function StudentSurveyFlow({ survey }: Props) {
         await saveStudentAnswers(batch);
         await markResponseComplete(responseId);
         setStep('complete');
-      } catch {
-        setSaveError('Something went wrong. Please try again.');
-        // Roll back the score increment so the student can retry
+      } catch (err) {
+        console.error('[Zanmi] survey submit failed:', err);
+        const detail = err instanceof Error ? err.message : String(err);
+        setSaveError(
+          process.env.NODE_ENV === 'development'
+            ? `Submit failed: ${detail}`
+            : 'Something went wrong. Please try again.'
+        );
         setScore(prev => prev - pts);
       } finally {
         setIsSaving(false);
@@ -185,8 +195,7 @@ export default function StudentSurveyFlow({ survey }: Props) {
               </p>
               <button
                 onClick={handleNicknameSubmit}
-                disabled={!nickname.trim()}
-                className="mt-4 w-full py-4 bg-zpurple text-white font-black text-base rounded-2xl shadow-game-sm hover:bg-zpurple-dark active:translate-y-1 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 transition-all"
+                className="mt-4 w-full py-4 bg-zpurple text-white font-black text-base rounded-2xl shadow-game-sm hover:bg-zpurple-dark active:translate-y-1 transition-all"
               >
                 Let&apos;s Go! →
               </button>
