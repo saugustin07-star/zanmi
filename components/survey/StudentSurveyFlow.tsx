@@ -4,6 +4,11 @@ import { useState } from 'react';
 import Image from 'next/image';
 import ConfettiBlast from '@/components/survey/ConfettiBlast';
 import { AVATAR_COMPONENTS } from '@/components/avatars';
+import {
+  createStudentResponse,
+  saveStudentAnswers,
+  markResponseComplete,
+} from '@/lib/db';
 import type { SurveyWithQuestions, DbQuestion } from '@/types/survey';
 
 // ── Avatar roster ─────────────────────────────────────────────────────────────
@@ -20,10 +25,9 @@ const AVATARS = [
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // Supabase JSONB options may be plain strings, objects, or a JSON string.
-// Always returns a plain string[] so rendering never depends on object shape.
+// Always returns string[] so rendering never depends on object shape.
 function normalizeOptions(raw: unknown): string[] {
   if (!raw) return [];
-
   if (Array.isArray(raw)) {
     return raw.map(item => {
       if (typeof item === 'string') return item;
@@ -34,15 +38,10 @@ function normalizeOptions(raw: unknown): string[] {
       return String(item);
     }).filter(Boolean);
   }
-
   if (typeof raw === 'string') {
-    try {
-      return normalizeOptions(JSON.parse(raw));
-    } catch {
-      return raw.split(',').map(s => s.trim()).filter(Boolean);
-    }
+    try { return normalizeOptions(JSON.parse(raw)); }
+    catch { return raw.split(',').map(s => s.trim()).filter(Boolean); }
   }
-
   return [];
 }
 
@@ -61,17 +60,22 @@ export default function StudentSurveyFlow({ survey }: Props) {
   const [nickname, setNickname]         = useState('');
   const [avatarId, setAvatarId]         = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  // All answers keyed by question ID — single source of truth, never undefined
   const [answers, setAnswers]           = useState<Record<string, string>>({});
   const [score, setScore]               = useState(0);
   const [justEarned, setJustEarned]     = useState<number | null>(null);
+
+  // Supabase state
+  const [responseId, setResponseId]     = useState<string | null>(null);
+  const [isStarting, setIsStarting]     = useState(false);
+  const [isSaving, setIsSaving]         = useState(false);
+  const [saveError, setSaveError]       = useState<string | null>(null);
 
   const questions  = survey.questions;
   const question   = questions[currentIndex];
   const total      = questions.length;
   const AvatarComp = avatarId ? AVATAR_COMPONENTS[avatarId] : null;
 
-  // Derive the current answer from the map — always a string, never undefined
+  // currentAnswer derived from the answers map — always a string, never undefined
   const currentAnswer = question ? (answers[question.id] ?? '') : '';
   const canAdvance    = String(currentAnswer).trim().length > 0;
 
@@ -89,18 +93,58 @@ export default function StudentSurveyFlow({ survey }: Props) {
     setStep('avatar');
   }
 
-  function handleAvatarSubmit() {
-    if (!avatarId) return;
-    setStep('question');
+  // Called when student clicks "Start Survey" on the avatar step.
+  // Creates the response row in Supabase before questions begin.
+  async function handleAvatarSubmit() {
+    if (!avatarId || isStarting) return;
+    setIsStarting(true);
+    setSaveError(null);
+    try {
+      const id = await createStudentResponse({
+        survey_id: survey.id,
+        audience_type: 'student',
+        respondent_nickname: nickname.trim() || null,
+        avatar: avatarId,
+        completed: false,
+      });
+      setResponseId(id);
+      setStep('question');
+    } catch {
+      setSaveError('Something went wrong starting the survey. Please try again.');
+    } finally {
+      setIsStarting(false);
+    }
   }
 
-  function handleNext() {
-    if (!canAdvance || !question) return;
+  // Advances through questions; on the last question, saves everything to Supabase.
+  async function handleNext() {
+    if (!canAdvance || !question || isSaving) return;
+
     const pts = (question.points ?? 0) > 0 ? question.points : 10;
     setScore(prev => prev + pts);
     flashPoints(pts);
+
     if (currentIndex + 1 >= total) {
-      setStep('complete');
+      // Last question — save all answers and mark complete
+      setSaveError(null);
+      setIsSaving(true);
+      try {
+        if (!responseId) throw new Error('No response ID');
+        const batch = Object.entries(answers).map(([questionId, value]) => ({
+          response_id: responseId,
+          question_id: questionId,
+          answer_value: value,
+        }));
+        await saveStudentAnswers(batch);
+        await markResponseComplete(responseId);
+        setStep('complete');
+      } catch {
+        setSaveError('Something went wrong. Please try again.');
+        // Roll back the score increment so the student can retry
+        setScore(prev => prev - pts);
+      } finally {
+        setIsSaving(false);
+      }
     } else {
       setCurrentIndex(prev => prev + 1);
     }
@@ -135,6 +179,10 @@ export default function StudentSurveyFlow({ survey }: Props) {
                 autoFocus
                 className="w-full px-4 py-3 rounded-2xl border-2 border-zdark/10 focus:border-zpurple outline-none font-semibold text-zdark text-base transition-colors placeholder:text-zdark/30"
               />
+              {/* Privacy notice */}
+              <p className="mt-3 text-xs text-zdark/40 font-semibold leading-relaxed">
+                🔒 You don&apos;t need to use your real name. Your answers are private and will only be used to help improve your experience.
+              </p>
               <button
                 onClick={handleNicknameSubmit}
                 disabled={!nickname.trim()}
@@ -185,12 +233,15 @@ export default function StudentSurveyFlow({ survey }: Props) {
                 );
               })}
             </div>
+            {saveError && (
+              <p className="text-red-500 font-semibold text-sm text-center mb-3">{saveError}</p>
+            )}
             <button
               onClick={handleAvatarSubmit}
-              disabled={!avatarId}
+              disabled={!avatarId || isStarting}
               className="w-full py-4 bg-zpurple text-white font-black text-base rounded-2xl shadow-game-sm hover:bg-zpurple-dark active:translate-y-1 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 transition-all"
             >
-              Start Survey →
+              {isStarting ? 'Starting…' : 'Start Survey →'}
             </button>
           </div>
         </div>
@@ -244,7 +295,6 @@ export default function StudentSurveyFlow({ survey }: Props) {
       <div className="bg-zdark sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 pt-3 pb-0">
 
-          {/* Name + score row */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Image
@@ -267,7 +317,6 @@ export default function StudentSurveyFlow({ survey }: Props) {
             </div>
           </div>
 
-          {/* Progress bar */}
           <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-500"
@@ -314,12 +363,16 @@ export default function StudentSurveyFlow({ survey }: Props) {
 
           </div>
 
+          {saveError && (
+            <p className="text-red-500 font-semibold text-sm text-center mb-3">{saveError}</p>
+          )}
+
           <button
             onClick={handleNext}
-            disabled={!canAdvance}
+            disabled={!canAdvance || isSaving}
             className="w-full py-4 bg-zpurple text-white font-black text-base rounded-2xl shadow-game-sm hover:bg-zpurple-dark active:translate-y-1 disabled:opacity-35 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 transition-all"
           >
-            {isLast ? 'Submit 🎉' : 'Next →'}
+            {isSaving ? 'Saving…' : isLast ? 'Submit 🎉' : 'Next →'}
           </button>
         </div>
       </div>
@@ -361,7 +414,6 @@ function QuestionInput({
   const optionLabels = normalizeOptions(question.options);
 
   // ── Rating scale ─────────────────────────────────────────────────────────
-  // Use option labels when they exist; fall back to 1–5 buttons.
   if (question_type === 'rating_scale' || question_type === 'scale') {
     if (optionLabels.length > 0) {
       return (

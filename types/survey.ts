@@ -50,11 +50,11 @@ export interface DbQuestion {
 export interface DbSurveyResponse {
   id: string;
   survey_id: string;
-  nickname: string | null;
-  avatar_id: string | null;
-  score: number;
-  started_at: string;
-  completed_at: string | null;
+  audience_type: AudienceType;
+  respondent_nickname: string | null;
+  avatar: string | null;
+  completed: boolean;
+  submitted_at: string | null;
   created_at: string;
 }
 

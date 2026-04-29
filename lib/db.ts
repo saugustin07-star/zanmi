@@ -7,8 +7,6 @@ import type {
   SurveyWithQuestions,
   InsertSurvey,
   InsertQuestion,
-  InsertSurveyResponse,
-  InsertAnswer,
 } from '@/types/survey';
 
 // ── Surveys ───────────────────────────────────────────────────────────────────
@@ -86,25 +84,34 @@ export async function getQuestionsBySurveyId(surveyId: string): Promise<DbQuesti
 
 // ── Responses ─────────────────────────────────────────────────────────────────
 
-export async function startResponse(
-  response: InsertSurveyResponse
-): Promise<string> {
+export async function createStudentResponse(payload: {
+  survey_id: string;
+  audience_type: string;
+  respondent_nickname: string | null;
+  avatar: string | null;
+  completed: boolean;
+}): Promise<string> {
   const { data, error } = await supabase
     .from('survey_responses')
-    .insert(response)
+    .insert(payload)
     .select('id')
     .single();
   if (error) throw error;
   return (data as { id: string }).id;
 }
 
-export async function completeResponse(
-  responseId: string,
-  score: number
+export async function saveStudentAnswers(
+  answers: Array<{ response_id: string; question_id: string; answer_value: string }>
 ): Promise<void> {
+  if (answers.length === 0) return;
+  const { error } = await supabase.from('answers').insert(answers);
+  if (error) throw error;
+}
+
+export async function markResponseComplete(responseId: string): Promise<void> {
   const { error } = await supabase
     .from('survey_responses')
-    .update({ completed_at: new Date().toISOString(), score })
+    .update({ completed: true, submitted_at: new Date().toISOString() })
     .eq('id', responseId);
   if (error) throw error;
 }
@@ -122,12 +129,6 @@ export async function getResponsesBySurveyId(
 }
 
 // ── Answers ───────────────────────────────────────────────────────────────────
-
-export async function saveAnswers(answers: InsertAnswer[]): Promise<void> {
-  if (answers.length === 0) return;
-  const { error } = await supabase.from('answers').insert(answers);
-  if (error) throw error;
-}
 
 export async function getAnswersByResponseId(
   responseId: string
