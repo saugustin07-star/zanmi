@@ -38,8 +38,8 @@ export interface DbSurvey {
 export interface DbQuestion {
   id: string;
   survey_id: string;
-  text: string;
-  type: QuestionType;
+  question_text: string;
+  question_type: QuestionType;
   options: QuestionOption[] | null; // null for open-ended types
   required: boolean;
   points: number;

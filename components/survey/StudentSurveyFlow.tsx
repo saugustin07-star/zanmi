@@ -265,7 +265,7 @@ export default function StudentSurveyFlow({ survey }: Props) {
             )}
 
             <h2 className="text-lg font-black text-zdark mb-6 leading-snug">
-              {question.text}
+              {question.question_text || <span className="text-zdark/30 italic">Question text missing</span>}
             </h2>
 
             <QuestionInput
@@ -319,10 +319,10 @@ function QuestionInput({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const { type, options } = question;
+  const { question_type, options } = question;
 
   // ── Rating scale (1–5) ────────────────────────────────────────────────────
-  if (type === 'rating_scale' || type === 'scale') {
+  if (question_type === 'rating_scale' || question_type === 'scale') {
     return (
       <div>
         <div className="grid grid-cols-5 gap-2">
@@ -349,7 +349,7 @@ function QuestionInput({
   }
 
   // ── Yes / No ─────────────────────────────────────────────────────────────
-  if (type === 'yes_no') {
+  if (question_type === 'yes_no') {
     return (
       <div className="grid grid-cols-2 gap-3">
         {(['yes', 'no'] as const).map(opt => (
@@ -372,7 +372,7 @@ function QuestionInput({
   }
 
   // ── Multiple choice / emoji rating ────────────────────────────────────────
-  if (type === 'multiple_choice' || type === 'emoji_rating') {
+  if (question_type === 'multiple_choice' || question_type === 'emoji_rating') {
     return (
       <div className="space-y-2.5">
         {(options ?? []).map(opt => (
@@ -399,7 +399,7 @@ function QuestionInput({
   }
 
   // ── Long answer ───────────────────────────────────────────────────────────
-  if (type === 'long_answer') {
+  if (question_type === 'long_answer') {
     return (
       <textarea
         value={value}
