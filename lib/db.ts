@@ -91,12 +91,23 @@ export async function createStudentResponse(payload: {
   avatar: string | null;
   completed: boolean;
 }): Promise<string> {
+  const insert = {
+    survey_id: payload.survey_id,
+    audience_type: payload.audience_type,
+    respondent_nickname: payload.respondent_nickname,
+    avatar: payload.avatar,
+    completed: payload.completed,
+  };
+  console.log('[Zanmi] survey_responses insert payload:', JSON.stringify(insert, null, 2));
   const { data, error } = await supabase
     .from('survey_responses')
-    .insert(payload)
+    .insert(insert)
     .select('id')
     .single();
-  if (error) throw error;
+  if (error) {
+    console.error('[Zanmi] survey_responses insert error:', JSON.stringify(error, null, 2));
+    throw error;
+  }
   return (data as { id: string }).id;
 }
 
