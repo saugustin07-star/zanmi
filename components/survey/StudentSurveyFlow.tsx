@@ -67,7 +67,7 @@ export default function StudentSurveyFlow({ survey }: Props) {
   // Supabase state
   const [responseId, setResponseId]     = useState<string | null>(null);
   const [isStarting, setIsStarting]     = useState(false);
-  const [isSaving, setIsSaving]         = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveError, setSaveError]       = useState<string | null>(null);
 
   const questions  = survey.questions;
@@ -128,7 +128,7 @@ export default function StudentSurveyFlow({ survey }: Props) {
 
   // Advances through questions; on the last question, saves everything to Supabase.
   async function handleNext() {
-    if (!canAdvance || !question || isSaving) return;
+    if (!canAdvance || !question || isSubmitting) return;
 
     const pts = (question.points ?? 0) > 0 ? question.points : 10;
     setScore(prev => prev + pts);
@@ -137,7 +137,7 @@ export default function StudentSurveyFlow({ survey }: Props) {
     if (currentIndex + 1 >= total) {
       // Last question — save all answers and mark complete
       setSaveError(null);
-      setIsSaving(true);
+      setIsSubmitting(true);
       try {
         if (!responseId) throw new Error('No response ID — was Start Survey clicked?');
         const batch = Object.entries(answers).map(([questionId, value]) => ({
@@ -154,11 +154,11 @@ export default function StudentSurveyFlow({ survey }: Props) {
         setSaveError(
           process.env.NODE_ENV === 'development'
             ? `Submit failed: ${detail}`
-            : 'Something went wrong. Please try again.'
+            : "We couldn't save your responses. Please try again."
         );
         setScore(prev => prev - pts);
       } finally {
-        setIsSaving(false);
+        setIsSubmitting(false);
       }
     } else {
       setCurrentIndex(prev => prev + 1);
@@ -277,10 +277,13 @@ export default function StudentSurveyFlow({ survey }: Props) {
           )}
           <div className="text-5xl mb-5">🎉</div>
           <h1 className="text-3xl font-black text-white mb-3 leading-tight">
-            Thanks for sharing your voice, {nickname}!
+            Thanks for sharing your voice!
           </h1>
-          <p className="text-white/55 font-semibold leading-relaxed mb-8">
-            Your feedback helps make this program better for everyone.
+          <p className="text-white/70 font-semibold leading-relaxed mb-1">
+            Your responses have been saved.
+          </p>
+          <p className="text-white/45 font-semibold text-sm leading-relaxed mb-8">
+            Your answers will help your school or program understand what students need.
           </p>
           <div className="bg-white/10 rounded-3xl p-6 border border-white/10">
             <div className="text-5xl font-black text-zorange mb-1">{score}</div>
@@ -383,10 +386,10 @@ export default function StudentSurveyFlow({ survey }: Props) {
 
           <button
             onClick={handleNext}
-            disabled={!canAdvance || isSaving}
+            disabled={!canAdvance || isSubmitting}
             className="w-full py-4 bg-zpurple text-white font-black text-base rounded-2xl shadow-game-sm hover:bg-zpurple-dark active:translate-y-1 disabled:opacity-35 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 transition-all"
           >
-            {isSaving ? 'Saving…' : isLast ? 'Submit 🎉' : 'Next →'}
+            {isSubmitting ? 'Saving your responses…' : isLast ? 'Submit 🎉' : 'Next →'}
           </button>
         </div>
       </div>
