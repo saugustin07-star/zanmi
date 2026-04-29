@@ -91,7 +91,9 @@ export async function createStudentResponse(payload: {
   avatar: string | null;
   completed: boolean;
 }): Promise<string> {
+  const responseId = crypto.randomUUID();
   const insert = {
+    id: responseId,
     survey_id: payload.survey_id,
     audience_type: payload.audience_type,
     respondent_nickname: payload.respondent_nickname,
@@ -99,16 +101,12 @@ export async function createStudentResponse(payload: {
     completed: payload.completed,
   };
   console.log('[Zanmi] survey_responses insert payload:', JSON.stringify(insert, null, 2));
-  const { data, error } = await supabase
-    .from('survey_responses')
-    .insert(insert)
-    .select('id')
-    .single();
+  const { error } = await supabase.from('survey_responses').insert(insert);
   if (error) {
     console.error('[Zanmi] survey_responses insert error:', JSON.stringify(error, null, 2));
     throw error;
   }
-  return (data as { id: string }).id;
+  return responseId;
 }
 
 export async function saveStudentAnswers(
