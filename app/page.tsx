@@ -104,7 +104,7 @@ export default function HomePage() {
       <section className="bg-zbg pt-20 pb-28 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-zpurple/10 text-zpurple font-bold text-sm px-4 py-2 rounded-full mb-8">
-            <span className="w-2 h-2 bg-zpurple rounded-full" />
+            <span className="w-2 h-2 bg-zorange rounded-full" />
             Pilot cohort opening August 2026
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-zdark leading-tight mb-6">
@@ -123,7 +123,7 @@ export default function HomePage() {
             </button>
             <Link
               href="/demo"
-              className="w-full sm:w-auto px-8 py-4 border-2 border-zdark/20 text-zdark font-black text-lg rounded-2xl hover:border-zpurple hover:text-zpurple transition-all text-center"
+              className="w-full sm:w-auto px-8 py-4 border-2 border-zdark/20 text-zdark font-black text-lg rounded-2xl hover:border-zorange hover:text-zorange transition-all text-center"
             >
               See Demo →
             </Link>
@@ -185,7 +185,7 @@ export default function HomePage() {
               { icon: '✨', bg: 'bg-zpurple/10', title: 'Designed for engagement',           body: 'Interactive, student-friendly experiences that increase completion and attention.' },
               { icon: '⚡', bg: 'bg-zteal/10',   title: 'Built for real-world use',           body: 'Create surveys in minutes with a workflow that feels simple, clear, and approachable.' },
               { icon: '🎯', bg: 'bg-zorange/10', title: 'Youth + adult surveys in one place', body: 'Gamified for students, streamlined for adults, and flexible enough for different program needs.' },
-              { icon: '📈', bg: 'bg-zpurple/10', title: 'Clear, usable insights',             body: "See what's working, what needs attention, and where your organization can improve." },
+              { icon: '📈', bg: 'bg-zorange/10', title: 'Clear, usable insights',             body: "See what's working, what needs attention, and where your organization can improve." },
             ].map(f => (
               <div key={f.title} className="bg-zbg rounded-3xl p-7 border border-gray-100 shadow-card">
                 <div className={`w-11 h-11 ${f.bg} rounded-2xl flex items-center justify-center text-xl mb-4`}>{f.icon}</div>
@@ -324,7 +324,7 @@ export default function HomePage() {
             <p className="text-zdark/60 font-semibold leading-relaxed mb-5">
               After supporting hundreds of studies and surveys, one thing was clear: engagement is one of the biggest barriers to getting meaningful data — especially with students.
             </p>
-            <p className="text-zdark font-black text-lg">Zanmi was built to fix that.</p>
+            <p className="text-zorange font-black text-lg">Zanmi was built to fix that.</p>
           </div>
         </div>
       </section>
