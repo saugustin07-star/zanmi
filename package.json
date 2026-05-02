@@ -11,6 +11,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",
     "next": "14.2.3",
+    "postcss-selector-parser": "^7.1.1",
     "react": "^18",
     "react-dom": "^18"
   },

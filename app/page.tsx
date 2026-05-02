@@ -76,7 +76,10 @@ export default function HomePage() {
       {/* ── NAV ──────────────────────────────────────────────────────────── */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <Image src="/zanmi-logo.png" alt="Zanmi" width={120} height={36} className="h-9 w-auto" />
+          <div className="flex items-center gap-2">
+            <Image src="/zanmi-icon.png" alt="Zanmi" width={36} height={36} className="h-9 w-9" />
+            <span className="font-black text-zdark text-lg">Zanmi</span>
+          </div>
           <div className="hidden md:flex items-center gap-7">
             {[
               { label: "Who It's For", href: '#who'      },
@@ -337,7 +340,7 @@ export default function HomePage() {
           </div>
           <button
             onClick={() => scrollToWaitlist('Joining the pilot')}
-            className="px-8 py-4 bg-zorange text-white font-black text-lg rounded-2xl shadow-game hover:bg-zorange/90 hover:shadow-game-sm transition-all"
+            className="px-8 py-4 bg-zpurple text-white font-black text-lg rounded-2xl shadow-game hover:bg-zpurple-dark hover:shadow-game-sm transition-all"
           >
             Apply for the Pilot
           </button>
@@ -479,7 +482,7 @@ export default function HomePage() {
               <button
                 type="submit"
                 disabled={status === 'submitting'}
-                className="w-full py-4 bg-zorange text-white font-black text-lg rounded-2xl shadow-game-sm hover:bg-zorange/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="w-full py-4 bg-zpurple text-white font-black text-lg rounded-2xl shadow-game-sm hover:bg-zpurple-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {status === 'submitting' ? 'Submitting…' : 'Join the Waitlist'}
               </button>
