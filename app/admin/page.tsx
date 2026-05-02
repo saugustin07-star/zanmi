@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
 import type { DbSurvey } from '@/types/survey';
+import type { AdminDataPayload, LatestResponse } from '@/app/api/admin/data/route';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -12,11 +12,11 @@ type Counts = { total: number; completed: number };
 type CountsMap = Record<string, Counts>;
 
 type PageState =
-  | { phase: 'checking' }           // reading sessionStorage
-  | { phase: 'gate' }               // waiting for passcode
-  | { phase: 'loading' }            // fetching data from Supabase
-  | { phase: 'error'; msg: string } // data fetch failed
-  | { phase: 'ready'; surveys: DbSurvey[]; counts: CountsMap };
+  | { phase: 'checking' }
+  | { phase: 'gate' }
+  | { phase: 'loading' }
+  | { phase: 'error'; msg: string }
+  | { phase: 'ready'; surveys: DbSurvey[]; counts: CountsMap; latestResponses: LatestResponse[] };
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -24,77 +24,71 @@ export default function AdminDashboard() {
   const [state, setState] = useState<PageState>({ phase: 'checking' });
   const [input, setInput]         = useState('');
   const [passcodeError, setPasscodeError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const passcode = process.env.NEXT_PUBLIC_ADMIN_PASSCODE ?? '';
-  const passcodeConfigured = passcode.length > 0;
-
-  // On mount: check sessionStorage for existing auth
   useEffect(() => {
-    const ok = sessionStorage.getItem('zanmi_admin_v1') === 'ok';
-    if (ok) {
-      loadData();
-    } else {
-      setState({ phase: 'gate' });
-    }
+    fetch('/api/admin/auth')
+      .then(r => {
+        if (r.ok) loadData();
+        else setState({ phase: 'gate' });
+      })
+      .catch(() => setState({ phase: 'gate' }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadData = useCallback(async () => {
     setState({ phase: 'loading' });
-
     try {
-      console.log('[Zanmi] admin: fetching surveys…');
-      const { data: surveysData, error: surveysErr } = await supabase
-        .from('surveys')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (surveysErr) {
-        console.error('[Zanmi] surveys fetch error:', JSON.stringify(surveysErr, null, 2));
-        setState({ phase: 'error', msg: surveysErr.message || JSON.stringify(surveysErr) });
+      const res = await fetch('/api/admin/data');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const msg = body.error ?? `HTTP ${res.status}`;
+        console.error('[Zanmi] /api/admin/data error:', msg);
+        setState({ phase: 'error', msg });
         return;
       }
-
-      console.log('[Zanmi] admin: fetching response counts…');
-      const { data: responsesData, error: responsesErr } = await supabase
-        .from('survey_responses')
-        .select('survey_id, completed');
-
-      if (responsesErr) {
-        // Non-fatal — show surveys without counts
-        console.error('[Zanmi] response counts fetch error:', JSON.stringify(responsesErr, null, 2));
-      }
-
-      const counts: CountsMap = {};
-      for (const row of (responsesData ?? []) as Array<{ survey_id: string; completed: boolean }>) {
-        if (!counts[row.survey_id]) counts[row.survey_id] = { total: 0, completed: 0 };
-        counts[row.survey_id].total++;
-        if (row.completed) counts[row.survey_id].completed++;
-      }
-
-      console.log('[Zanmi] admin: loaded', surveysData?.length ?? 0, 'surveys');
-      setState({ phase: 'ready', surveys: surveysData ?? [], counts });
+      const data: AdminDataPayload = await res.json();
+      setState({
+        phase: 'ready',
+        surveys: data.surveys,
+        counts: data.counts,
+        latestResponses: data.latestResponses,
+      });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : JSON.stringify(err);
+      const msg = err instanceof Error ? err.message : String(err);
       console.error('[Zanmi] admin load failed:', msg);
       setState({ phase: 'error', msg });
     }
   }, []);
 
-  function handlePasscodeSubmit(e: React.FormEvent) {
+  async function handlePasscodeSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (input.trim() === passcode) {
-      sessionStorage.setItem('zanmi_admin_v1', 'ok');
-      setPasscodeError(false);
-      loadData();
-    } else {
-      console.warn('[Zanmi] admin: incorrect passcode attempt');
+    if (submitting) return;
+    setSubmitting(true);
+    setPasscodeError(false);
+    try {
+      const res = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passcode: input.trim() }),
+      });
+      if (res.ok) {
+        setInput('');
+        loadData();
+      } else {
+        console.warn('[Zanmi] admin: incorrect passcode attempt');
+        setPasscodeError(true);
+        setInput('');
+      }
+    } catch {
       setPasscodeError(true);
       setInput('');
+    } finally {
+      setSubmitting(false);
     }
   }
 
-  // ── Checking sessionStorage ─────────────────────────────────────────────────
+  // ── Checking session ────────────────────────────────────────────────────────
 
   if (state.phase === 'checking') {
     return <div className="min-h-screen bg-zbg" />;
@@ -114,17 +108,6 @@ export default function AdminDashboard() {
             </p>
           </div>
 
-          {!passcodeConfigured && (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-4">
-              <p className="text-amber-800 font-bold text-sm">
-                ⚠️ <code className="font-mono">NEXT_PUBLIC_ADMIN_PASSCODE</code> is not set.
-              </p>
-              <p className="text-amber-700 font-semibold text-xs mt-1">
-                Add this environment variable in your Vercel project settings, then redeploy.
-              </p>
-            </div>
-          )}
-
           <form
             onSubmit={handlePasscodeSubmit}
             className="bg-white rounded-3xl p-6 shadow-card border border-gray-100 space-y-4"
@@ -139,7 +122,7 @@ export default function AdminDashboard() {
                 onChange={e => { setInput(e.target.value); setPasscodeError(false); }}
                 placeholder="Enter passcode…"
                 autoFocus
-                disabled={!passcodeConfigured}
+                disabled={submitting}
                 className={`w-full px-4 py-3 rounded-2xl border-2 outline-none font-semibold text-zdark transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                   passcodeError
                     ? 'border-red-400 bg-red-50 placeholder:text-red-300'
@@ -152,10 +135,10 @@ export default function AdminDashboard() {
             </div>
             <button
               type="submit"
-              disabled={!input.trim() || !passcodeConfigured}
+              disabled={!input.trim() || submitting}
               className="w-full py-3.5 bg-zpurple text-white font-black rounded-2xl shadow-game-sm hover:bg-zpurple-dark disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
-              Enter Dashboard →
+              {submitting ? 'Checking…' : 'Enter Dashboard →'}
             </button>
           </form>
         </div>
@@ -185,9 +168,12 @@ export default function AdminDashboard() {
       <div className="p-6 md:p-8 max-w-5xl">
         <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
           <h2 className="font-black text-red-700 text-lg mb-2">Failed to load dashboard</h2>
-          <p className="text-red-600 font-semibold text-sm font-mono">{state.msg}</p>
+          <p className="text-red-600 font-semibold text-sm font-mono break-all">{state.msg}</p>
           <p className="text-red-500 text-xs font-semibold mt-3">
-            This is likely a Supabase RLS policy or connection issue. Check the browser console for the full error.
+            If this says &quot;Missing Supabase env&quot; or &quot;Invalid API key&quot;, add{' '}
+            <code className="font-mono bg-red-100 px-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code>{' '}
+            to your <code className="font-mono bg-red-100 px-1 rounded">.env.local</code>{' '}
+            (Supabase dashboard → Settings → API → service_role).
           </p>
           <button
             onClick={loadData}
@@ -202,7 +188,7 @@ export default function AdminDashboard() {
 
   // ── Ready ───────────────────────────────────────────────────────────────────
 
-  const { surveys, counts } = state;
+  const { surveys, counts, latestResponses } = state;
   const totalResponses = Object.values(counts).reduce((s, c) => s + c.total, 0);
   const totalCompleted = Object.values(counts).reduce((s, c) => s + c.completed, 0);
 
@@ -236,13 +222,13 @@ export default function AdminDashboard() {
 
       {/* Survey list */}
       {surveys.length === 0 ? (
-        <div className="bg-white rounded-3xl p-16 text-center shadow-card border border-gray-100">
+        <div className="bg-white rounded-3xl p-16 text-center shadow-card border border-gray-100 mb-8">
           <div className="text-5xl mb-4">📭</div>
           <h3 className="text-xl font-black text-zdark mb-2">No surveys yet</h3>
           <p className="text-zdark/50 font-semibold">Surveys you create will appear here.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 mb-10">
           {surveys.map(survey => (
             <SurveyRow
               key={survey.id}
@@ -252,6 +238,22 @@ export default function AdminDashboard() {
           ))}
         </div>
       )}
+
+      {/* Latest submissions */}
+      <div>
+        <h2 className="text-lg font-black text-zdark mb-4">Latest Submissions</h2>
+        {latestResponses.length === 0 ? (
+          <div className="bg-white rounded-2xl p-8 text-center shadow-card border border-gray-100">
+            <p className="text-zdark/40 font-semibold text-sm">No submissions yet.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-3xl shadow-card border border-gray-100 divide-y divide-gray-50">
+            {latestResponses.map(resp => (
+              <LatestResponseRow key={resp.id} response={resp} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -275,9 +277,9 @@ function SurveyRow({ survey, counts }: { survey: DbSurvey; counts: Counts }) {
     <div className="bg-white rounded-2xl p-5 shadow-card border border-gray-100 flex items-center gap-4">
       <div
         className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
-        style={{ backgroundColor: `${survey.color}22` }}
+        style={{ backgroundColor: survey.color ? `${survey.color}22` : '#7C3AED22' }}
       >
-        {survey.emoji}
+        {survey.emoji ?? '📋'}
       </div>
 
       <div className="flex-1 min-w-0">
@@ -315,6 +317,36 @@ function SurveyRow({ survey, counts }: { survey: DbSurvey; counts: Counts }) {
       >
         View Results
       </Link>
+    </div>
+  );
+}
+
+// ── Latest response row ───────────────────────────────────────────────────────
+
+function LatestResponseRow({ response }: { response: LatestResponse }) {
+  const survey = response.surveys;
+  const when = new Date(response.started_at).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+
+  return (
+    <div className="flex items-center gap-3 px-5 py-4">
+      <div className="w-8 h-8 rounded-xl bg-zbg flex items-center justify-center text-base flex-shrink-0">
+        {response.avatar ?? '👤'}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-bold text-zdark text-sm truncate">
+          {response.respondent_nickname ?? 'Anonymous'}
+        </div>
+        <div className="text-xs text-zdark/40 font-semibold truncate">
+          {survey ? survey.title : 'Unknown survey'} · {when}
+        </div>
+      </div>
+      <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+        response.completed ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+      }`}>
+        {response.completed ? 'Completed' : 'Started'}
+      </span>
     </div>
   );
 }

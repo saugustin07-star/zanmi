@@ -10,6 +10,7 @@ import {
   markResponseComplete,
 } from '@/lib/db';
 import type { SurveyWithQuestions, DbQuestion } from '@/types/survey';
+import { sanitizeNickname, sanitizeText } from '@/lib/sanitize';
 
 // ── Avatar roster ─────────────────────────────────────────────────────────────
 
@@ -102,7 +103,7 @@ export default function StudentSurveyFlow({ survey }: Props) {
       const id = await createStudentResponse({
         survey_id: survey.id,
         audience_type: 'student',
-        respondent_nickname: nickname.trim() || null,
+        respondent_nickname: sanitizeNickname(nickname) || null,
         avatar: avatarId || null,
         completed: false,
       });
@@ -143,7 +144,7 @@ export default function StudentSurveyFlow({ survey }: Props) {
         const batch = Object.entries(answers).map(([questionId, value]) => ({
           response_id: responseId,
           question_id: questionId,
-          answer_value: value,
+          answer_value: sanitizeText(value),
         }));
         await saveStudentAnswers(batch);
         await markResponseComplete(responseId);

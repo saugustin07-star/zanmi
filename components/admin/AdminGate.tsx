@@ -9,14 +9,17 @@ export default function AdminGate({ children }: { children: React.ReactNode }) {
   const [error, setError]     = useState(false);
 
   useEffect(() => {
-    setAuthed(sessionStorage.getItem('zanmi_admin_v1') === 'ok');
+    fetch('/api/admin/auth').then(r => setAuthed(r.ok)).catch(() => setAuthed(false));
   }, []);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const passcode = process.env.NEXT_PUBLIC_ADMIN_PASSCODE ?? '';
-    if (passcode && input.trim() === passcode) {
-      sessionStorage.setItem('zanmi_admin_v1', 'ok');
+    const res = await fetch('/api/admin/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passcode: input.trim() }),
+    });
+    if (res.ok) {
       setAuthed(true);
     } else {
       setError(true);

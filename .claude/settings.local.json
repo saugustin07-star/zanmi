@@ -24,7 +24,16 @@
       "Bash(git remote *)",
       "Bash(git branch *)",
       "Bash(git push *)",
-      "Bash(xargs -I{} bash -c 'echo \"{}\"; file \"{}\"')"
+      "Bash(xargs -I{} bash -c 'echo \"{}\"; file \"{}\"')",
+      "Bash(node -e ' *)",
+      "Bash(git rm *)",
+      "Bash(ls vercel.json)",
+      "Bash(cat vercel.json)",
+      "Bash(cat next.config.js)",
+      "Bash(cat next.config.mjs)",
+      "Bash(cat next.config.ts)",
+      "Bash(vercel --version)",
+      "Bash(gh run *)"
     ]
   }
 }

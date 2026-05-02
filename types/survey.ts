@@ -25,13 +25,13 @@ export interface DbSurvey {
   id: string;
   title: string;
   description: string;
-  emoji: string;
-  color: string;
+  emoji?: string | null;
+  color?: string | null;
   audience_type: AudienceType;
   status: SurveyStatus;
   public_slug: string | null;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 // questions table
@@ -55,7 +55,7 @@ export interface DbSurveyResponse {
   avatar: string | null;
   completed: boolean;
   submitted_at: string | null;
-  created_at: string;
+  started_at: string;
 }
 
 // answers table
@@ -63,8 +63,7 @@ export interface DbAnswer {
   id: string;
   response_id: string;
   question_id: string;
-  answer_value: string | null; // selected option id for choice/scale/yes_no/rating_scale
-  answer_text: string | null;  // free text for short_answer / long_answer
+  answer_value: string | null;
   created_at: string;
 }
 
