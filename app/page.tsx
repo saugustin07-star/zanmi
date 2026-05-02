@@ -67,7 +67,7 @@ export default function HomePage() {
   }
 
   const inputBase = 'w-full px-4 py-3 rounded-2xl border-2 outline-none font-semibold text-zdark transition-colors placeholder:text-zdark/30';
-  const inputOk   = 'border-zdark/10 focus:border-zpurple bg-white';
+  const inputOk   = 'border-zdark/10 focus:border-zteal bg-white';
   const inputErr  = 'border-red-400 bg-red-50';
 
   return (
@@ -76,10 +76,7 @@ export default function HomePage() {
       {/* ── NAV ──────────────────────────────────────────────────────────── */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <Image src="/zanmi-icon.png" alt="Zanmi" width={36} height={36} className="h-9 w-9" />
-            <span className="font-black text-zdark text-xl tracking-tight">Zanmi</span>
-          </div>
+          <Image src="/zanmi-logo.png" alt="Zanmi" width={120} height={36} className="h-9 w-auto" />
           <div className="hidden md:flex items-center gap-7">
             {[
               { label: "Who It's For", href: '#who'      },
@@ -103,13 +100,13 @@ export default function HomePage() {
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section className="bg-zbg pt-20 pb-28 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-zpurple/10 text-zpurple font-bold text-sm px-4 py-2 rounded-full mb-8">
+          <div className="inline-flex items-center gap-2 bg-zteal/10 text-zteal font-bold text-sm px-4 py-2 rounded-full mb-8">
             <span className="w-2 h-2 bg-zorange rounded-full" />
             Pilot cohort opening August 2026
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-zdark leading-tight mb-6">
             Turn surveys into experiences<br className="hidden sm:block" />{' '}
-            kids <span className="text-zpurple">actually want</span> to complete
+            kids <span className="text-zorange">actually want</span> to complete
           </h1>
           <p className="text-lg md:text-xl text-zdark/60 font-semibold max-w-2xl mx-auto mb-10 leading-relaxed">
             Zanmi is a simple, powerful survey tool for schools and youth organizations, designed to boost engagement and help you get better data from both students and adults.
@@ -123,7 +120,7 @@ export default function HomePage() {
             </button>
             <Link
               href="/demo"
-              className="w-full sm:w-auto px-8 py-4 border-2 border-zdark/20 text-zdark font-black text-lg rounded-2xl hover:border-zorange hover:text-zorange transition-all text-center"
+              className="w-full sm:w-auto px-8 py-4 border-2 border-zdark/20 text-zdark font-black text-lg rounded-2xl hover:border-zpurple hover:text-zpurple transition-all text-center"
             >
               See Demo →
             </Link>
@@ -141,14 +138,16 @@ export default function HomePage() {
             Built for the people doing the work
           </h2>
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-zbg rounded-3xl p-8 border border-gray-100">
+            <div className="relative overflow-hidden bg-zbg rounded-3xl p-8 border border-gray-100">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-zorange" />
               <div className="w-12 h-12 bg-zpurple/10 rounded-2xl flex items-center justify-center text-2xl mb-5">🏫</div>
               <h3 className="text-xl font-black text-zdark mb-3">For Schools &amp; Youth Organizations</h3>
               <p className="text-zdark/60 font-semibold leading-relaxed">
                 Run surveys that students actually finish. Whether it's program feedback, climate surveys, or research studies, Zanmi helps you collect higher-quality responses with less effort.
               </p>
             </div>
-            <div className="bg-zbg rounded-3xl p-8 border border-gray-100">
+            <div className="relative overflow-hidden bg-zbg rounded-3xl p-8 border border-gray-100">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-zteal" />
               <div className="w-12 h-12 bg-zteal/10 rounded-2xl flex items-center justify-center text-2xl mb-5">📊</div>
               <h3 className="text-xl font-black text-zdark mb-3">For Researchers &amp; Program Teams</h3>
               <p className="text-zdark/60 font-semibold leading-relaxed">
@@ -162,6 +161,7 @@ export default function HomePage() {
       {/* ── PROBLEM ──────────────────────────────────────────────────────── */}
       <section className="py-20 px-6 bg-zdark">
         <div className="max-w-3xl mx-auto text-center">
+          <div className="w-10 h-1 bg-zteal rounded-full mx-auto mb-7" />
           <h2 className="text-3xl md:text-4xl font-black text-white mb-8">
             Let's be honest about surveys
           </h2>
@@ -182,12 +182,13 @@ export default function HomePage() {
           </h2>
           <div className="grid sm:grid-cols-2 gap-6">
             {[
-              { icon: '✨', bg: 'bg-zpurple/10', title: 'Designed for engagement',           body: 'Interactive, student-friendly experiences that increase completion and attention.' },
-              { icon: '⚡', bg: 'bg-zteal/10',   title: 'Built for real-world use',           body: 'Create surveys in minutes with a workflow that feels simple, clear, and approachable.' },
-              { icon: '🎯', bg: 'bg-zorange/10', title: 'Youth + adult surveys in one place', body: 'Gamified for students, streamlined for adults, and flexible enough for different program needs.' },
-              { icon: '📈', bg: 'bg-zorange/10', title: 'Clear, usable insights',             body: "See what's working, what needs attention, and where your organization can improve." },
+              { icon: '✨', bg: 'bg-zpurple/10', accent: 'bg-zpurple', title: 'Designed for engagement',           body: 'Interactive, student-friendly experiences that increase completion and attention.' },
+              { icon: '⚡', bg: 'bg-zteal/10',   accent: 'bg-zteal',   title: 'Built for real-world use',           body: 'Create surveys in minutes with a workflow that feels simple, clear, and approachable.' },
+              { icon: '🎯', bg: 'bg-zorange/10', accent: 'bg-zorange', title: 'Youth + adult surveys in one place', body: 'Gamified for students, streamlined for adults, and flexible enough for different program needs.' },
+              { icon: '📈', bg: 'bg-zpurple/10', accent: 'bg-zpurple', title: 'Clear, usable insights',             body: "See what's working, what needs attention, and where your organization can improve." },
             ].map(f => (
-              <div key={f.title} className="bg-zbg rounded-3xl p-7 border border-gray-100 shadow-card">
+              <div key={f.title} className="relative overflow-hidden bg-zbg rounded-3xl p-7 border border-gray-100 shadow-card">
+                <div className={`absolute top-0 left-0 right-0 h-1 ${f.accent}`} />
                 <div className={`w-11 h-11 ${f.bg} rounded-2xl flex items-center justify-center text-xl mb-4`}>{f.icon}</div>
                 <h3 className="font-black text-zdark text-lg mb-2">{f.title}</h3>
                 <p className="text-zdark/60 font-semibold leading-relaxed">{f.body}</p>
@@ -209,7 +210,8 @@ export default function HomePage() {
           <div className="grid md:grid-cols-3 gap-6">
 
             {/* Student survey */}
-            <div className="bg-white rounded-3xl p-6 shadow-card border border-gray-100">
+            <div className="relative overflow-hidden bg-white rounded-3xl p-6 shadow-card border border-gray-100">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-zpurple" />
               <p className="text-xs font-black text-zpurple uppercase tracking-widest mb-5">Student Survey Experience</p>
               <div className="bg-zbg rounded-2xl p-4 mb-4">
                 <div className="flex items-center gap-2 mb-3">
@@ -235,7 +237,8 @@ export default function HomePage() {
             </div>
 
             {/* Adult survey */}
-            <div className="bg-white rounded-3xl p-6 shadow-card border border-gray-100">
+            <div className="relative overflow-hidden bg-white rounded-3xl p-6 shadow-card border border-gray-100">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-zteal" />
               <p className="text-xs font-black text-zteal uppercase tracking-widest mb-5">Adult Survey Experience</p>
               <div className="space-y-3">
                 <div className="bg-zbg rounded-2xl p-4">
@@ -259,51 +262,31 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Program Insights */}
-            <div className="bg-white rounded-3xl p-6 shadow-card border border-gray-100">
-              <p className="text-xs font-black text-zorange uppercase tracking-widest mb-1">Admin Dashboard</p>
-              <p className="text-xs font-semibold text-zdark/40 mb-4">Spring 2026 · 47 responses</p>
-
-              {/* Highest rated */}
-              <p className="text-xs font-black text-zdark/30 uppercase tracking-widest mb-2">Highest rated</p>
-              <div className="space-y-2 mb-4">
+            {/* Dashboard */}
+            <div className="relative overflow-hidden bg-white rounded-3xl p-6 shadow-card border border-gray-100">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-zorange" />
+              <p className="text-xs font-black text-zorange uppercase tracking-widest mb-5">Admin Dashboard</p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-zdark/40">Total Responses</span>
+                  <span className="text-lg font-black text-zdark">24</span>
+                </div>
+                <div className="h-px bg-gray-100" />
                 {[
-                  { label: 'Staff support',       score: 4.8, pct: 96 },
-                  { label: 'Sense of belonging',  score: 4.6, pct: 92 },
-                ].map(p => (
-                  <div key={p.label} className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-zdark/60 w-28 flex-shrink-0 truncate">{p.label}</span>
-                    <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-zteal rounded-full" style={{ width: `${p.pct}%` }} />
+                  { label: '😊 Great',     pct: 58, color: 'bg-zpurple' },
+                  { label: '😐 Okay',      pct: 29, color: 'bg-zteal'   },
+                  { label: '😔 Not great', pct: 13, color: 'bg-zorange'  },
+                ].map(b => (
+                  <div key={b.label}>
+                    <div className="flex justify-between mb-1.5">
+                      <span className="text-xs font-bold text-zdark/60">{b.label}</span>
+                      <span className="text-xs font-black text-zdark">{b.pct}%</span>
                     </div>
-                    <span className="text-xs font-black text-zteal w-6 text-right">{p.score}</span>
+                    <div className="h-5 bg-gray-100 rounded-xl overflow-hidden">
+                      <div className={`h-full ${b.color} rounded-xl`} style={{ width: `${b.pct}%` }} />
+                    </div>
                   </div>
                 ))}
-              </div>
-
-              <div className="h-px bg-gray-100 mb-4" />
-
-              {/* Needs attention */}
-              <p className="text-xs font-black text-zdark/30 uppercase tracking-widest mb-2">Needs attention</p>
-              <div className="space-y-2 mb-4">
-                {[
-                  { label: 'Program variety',   score: 2.9, pct: 58 },
-                  { label: 'Communication',     score: 2.6, pct: 52 },
-                ].map(p => (
-                  <div key={p.label} className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-zdark/60 w-28 flex-shrink-0 truncate">{p.label}</span>
-                    <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-zorange rounded-full" style={{ width: `${p.pct}%` }} />
-                    </div>
-                    <span className="text-xs font-black text-zorange w-6 text-right">{p.score}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="h-px bg-gray-100 mb-3" />
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-zdark/30">Completion rate</span>
-                <span className="text-xs font-black text-zpurple">84%</span>
               </div>
             </div>
 
@@ -314,7 +297,7 @@ export default function HomePage() {
       {/* ── FOUNDER CREDIBILITY ──────────────────────────────────────────── */}
       <section className="py-20 px-6 bg-white">
         <div className="max-w-3xl mx-auto">
-          <div className="bg-zbg rounded-3xl p-10 border border-gray-100">
+          <div className="bg-zbg rounded-3xl p-10 border border-gray-100" style={{ borderLeft: '4px solid #14B8A6' }}>
             <h2 className="text-2xl md:text-3xl font-black text-zdark mb-6">
               Built by someone who understands the work
             </h2>
@@ -330,8 +313,9 @@ export default function HomePage() {
       </section>
 
       {/* ── PILOT ────────────────────────────────────────────────────────── */}
-      <section id="pilot" className="py-20 px-6 bg-zpurple">
+      <section id="pilot" className="py-20 px-6 bg-zdark">
         <div className="max-w-3xl mx-auto text-center">
+          <div className="w-10 h-1 bg-zteal rounded-full mx-auto mb-7" />
           <h2 className="text-3xl md:text-4xl font-black text-white mb-5">
             Join the first Zanmi pilot cohort
           </h2>
@@ -353,7 +337,7 @@ export default function HomePage() {
           </div>
           <button
             onClick={() => scrollToWaitlist('Joining the pilot')}
-            className="px-8 py-4 bg-white text-zpurple font-black text-lg rounded-2xl shadow-game hover:shadow-game-sm hover:translate-y-px transition-all"
+            className="px-8 py-4 bg-zorange text-white font-black text-lg rounded-2xl shadow-game hover:bg-zorange/90 hover:shadow-game-sm transition-all"
           >
             Apply for the Pilot
           </button>
@@ -371,6 +355,7 @@ export default function HomePage() {
       >
         <div className="max-w-xl mx-auto">
           <div className="text-center mb-10">
+            <div className="w-10 h-1 bg-zteal rounded-full mx-auto mb-5" />
             <h2 className="text-3xl md:text-4xl font-black text-zdark mb-3">
               Join the Zanmi Waitlist
             </h2>
@@ -388,11 +373,12 @@ export default function HomePage() {
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} noValidate className="bg-white rounded-3xl p-8 shadow-card border border-gray-100 space-y-5">
+            <form onSubmit={handleSubmit} noValidate className="relative overflow-hidden bg-white rounded-3xl p-8 shadow-card border border-gray-100 space-y-5">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-zteal" />
 
               <div>
                 <label htmlFor="wl-name" className="block text-xs font-black text-zdark/50 uppercase tracking-widest mb-1.5">
-                  Name <span className="text-zpurple" aria-hidden="true">*</span>
+                  Name <span className="text-zorange" aria-hidden="true">*</span>
                 </label>
                 <input
                   id="wl-name"
@@ -410,7 +396,7 @@ export default function HomePage() {
 
               <div>
                 <label htmlFor="wl-email" className="block text-xs font-black text-zdark/50 uppercase tracking-widest mb-1.5">
-                  Email <span className="text-zpurple" aria-hidden="true">*</span>
+                  Email <span className="text-zorange" aria-hidden="true">*</span>
                 </label>
                 <input
                   id="wl-email"
@@ -444,7 +430,7 @@ export default function HomePage() {
 
               <div>
                 <label htmlFor="wl-interest" className="block text-xs font-black text-zdark/50 uppercase tracking-widest mb-1.5">
-                  I'm interested in <span className="text-zpurple" aria-hidden="true">*</span>
+                  I'm interested in <span className="text-zorange" aria-hidden="true">*</span>
                 </label>
                 <select
                   id="wl-interest"
@@ -493,7 +479,7 @@ export default function HomePage() {
               <button
                 type="submit"
                 disabled={status === 'submitting'}
-                className="w-full py-4 bg-zpurple text-white font-black text-lg rounded-2xl shadow-game-sm hover:bg-zpurple-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="w-full py-4 bg-zorange text-white font-black text-lg rounded-2xl shadow-game-sm hover:bg-zorange/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {status === 'submitting' ? 'Submitting…' : 'Join the Waitlist'}
               </button>
@@ -503,10 +489,10 @@ export default function HomePage() {
       </section>
 
       {/* ── FOOTER ───────────────────────────────────────────────────────── */}
-      <footer className="bg-zdark py-10 px-6">
+      <footer className="bg-zdark border-t border-zteal/20 py-10 px-6">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-5">
           <Image src="/zanmi-logo.png" alt="Zanmi" width={100} height={30} className="h-7 w-auto brightness-0 invert" />
-          <a href="mailto:hello@tryzanmi.com" className="text-white/60 hover:text-white font-semibold text-sm transition-colors">
+          <a href="mailto:hello@tryzanmi.com" className="text-zteal/70 hover:text-zteal font-semibold text-sm transition-colors">
             hello@tryzanmi.com
           </a>
           <p className="text-white/40 font-semibold text-sm">© 2026 Zanmi</p>
